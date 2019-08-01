@@ -1,0 +1,15 @@
+language: java
+
+before_script:
+  - "mkdir $HOME/lambda"
+
+jdk:
+  - oraclejdk11
+  - oraclejdk12
+  - oraclejdk13
+  - openjdk8
+  - openjdk9
+  - openjdk10
+  - openjdk11
+  - openjdk12
+  - openjdk13
