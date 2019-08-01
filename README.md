@@ -1,4 +1,4 @@
-# FluentJPA <div style="float:right">![Patent Pending](https://img.shields.io/badge/patent-pending-informational)</div>
+# FluentJPA <div style="float:right">![Patent Pending](https://img.shields.io/badge/patent-pending-informational) [![Build Status](https://travis-ci.org/streamx-co/FluentJPA.svg?branch=master)](https://travis-ci.org/streamx-co/FluentJPA)</div>
 
 ## Fluent API for writing type-safe SQL queries with JPA
 
@@ -15,7 +15,7 @@ There is no bootstrap, code generation step or anything else needed to use Fluen
 <!-- > Probably the most important feature missing in JPA is **Sub Query**. Joins are kind of "solved" by JPA annotations combined with JPA loading policies. With JPA Repositories [Query Creation](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#repositories.query-methods.query-creation) it's possible to easily create most of single queries required in practice. But there is absolutely no good solution when a sub query is needed! Not only FluentJPA supports sub queries very well, it also lets put them into a separate Java function, for brevity. After all, sub query is sort of a lambda inside an SQL query, I think. -->
 > Probably the most important feature missing in JPA is **Sub Query**. We think that any serious SQL starts with them (just look [here](https://mode.com/sql-tutorial/sql-subqueries/) for few examples). Not only FluentJPA supports sub queries, it also lets put them into a separate Java(!) function. So the code looks 100% natural to a Java developer.
 
-Let's start easy and look on the simplest query possible, but overview the entire flow. (A bit spiced with passing an external parameter and JPA Repository integration)
+Let's start easy and look on the simplest query possible, but shows the entire flow. (A bit spiced with passing an external parameter and JPA Repository integration)
 
 ### Example 0 - [testPassArguments()](src/test/java/co/streamx/fluent/JPA/PersonRepositoryTest.java)
 
@@ -107,7 +107,8 @@ private static SalesOrderDetail salesByProducts(String orderDate) {
         int orderQty = alias(SUM(sod.getOrderQty()), SalesOrderDetail::getOrderQty);
 
         SELECT(product, orderQty);
-        FROM(sod).JOIN(soh).ON(sod.getSalesOrderID() == soh.getSalesOrderID() && soh.getOrderDate() == orderDate);
+        FROM(sod).JOIN(soh)
+                 .ON(sod.getSalesOrderID() == soh.getSalesOrderID() && soh.getOrderDate() == orderDate);
         GROUP(BY(product));
     });
 }
