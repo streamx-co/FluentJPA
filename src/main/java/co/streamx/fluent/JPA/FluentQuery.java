@@ -25,7 +25,7 @@ public interface FluentQuery {
     List<Object> getOrdinalParameters();
 
     /**
-     * Create an instance of {@link Query.
+     * Creates an instance of {@link Query}
      * 
      * @see EntityManager#createNativeQuery(String)
      * @param em {@link EntityManager}
@@ -47,7 +47,7 @@ public interface FluentQuery {
     /**
      * Set {@link TemporalType} for the parameter. Must be set before calling {@link #createQuery(EntityManager)}
      * <p>
-     * By default {@link Timestamp} {@code param} will be assigned as {@link TemporalType#TIMESTAMP},<br/>
+     * By default {@link Timestamp} {@code param} will be assigned as {@link TemporalType#TIMESTAMP},<br>
      * {@link Time} {@code param} as {@link TemporalType#TIME}, otherwise as {@link TemporalType#DATE}
      */
     void setParameterTemporalType(Date param,
