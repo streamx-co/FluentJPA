@@ -1,3 +1,6 @@
+# Only build tags
+if: tag IS present
+
 language: java
 
 jdk:
