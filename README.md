@@ -1,4 +1,4 @@
-# FluentJPA <div style="float:right">![Patent Pending](https://img.shields.io/badge/patent-pending-informational) [![Build Status](https://travis-ci.org/streamx-co/FluentJPA.svg?branch=master)](https://travis-ci.org/streamx-co/FluentJPA)</div>
+# FluentJPA <div style="float:right">![Patent Pending](https://img.shields.io/badge/patent-pending-informational) ![License](https://img.shields.io/github/license/streamx-co/fluent-jpa) ![Java Version](https://img.shields.io/badge/java-%3E%3D%208-success) [![Build Status](https://travis-ci.org/streamx-co/FluentJPA.svg?branch=master)](https://travis-ci.org/streamx-co/FluentJPA) [![Maven Central](https://img.shields.io/maven-central/v/co.streamx.fluent/fluent-jpa?label=maven%20central)](https://search.maven.org/search?q=g:%22co.streamx.fluent%22%20AND%20a:%22fluent-jpa%22)</div>
 
 ## Fluent API for writing type-safe SQL queries with JPA
 
@@ -10,12 +10,12 @@ FluentJPA project aims to fill this gap in two ways:
 And by saying Java, we **mean** Java. There is no DSL or semantic gap. You use `+` for addition and `-` for subtraction. You use getter to get a property value and setter to set it. You use functions and variables, so when you call SQL `SELECT`, you call it like any other library method. And when you need a sub query, you will probably prefer to put it in a separate function ... as you usually do when you code rest of your business logic. To accomplish this, FluentJPA reads the Java Byte Code from the .class files in runtime and translates it all the way to SQL.
 * naturally extending the JPA model. Once you mapped your entities, forget about mapping. Use JPA entity getters and setters to write expressions and joins, store intermediate calculations in variables, pass them to methods - we seamlessly translate it to SQL.
 
-There is no bootstrap, code generation step or anything else needed to use FluentJPA. Add a [!FluentJPA dependency!](Setup.md) to your project build system and unlock the full power of type-safe Object Oriented SQL in your JPA project without compromises!
+There is no bootstrap, code generation step or anything else needed to use FluentJPA. Add [dependencies](/streamx-co/FluentJPA/wiki/Setup) to your project build system and unlock the full power of type-safe Object Oriented SQL in your JPA project without compromises!
 
 <!-- > Probably the most important feature missing in JPA is **Sub Query**. Joins are kind of "solved" by JPA annotations combined with JPA loading policies. With JPA Repositories [Query Creation](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#repositories.query-methods.query-creation) it's possible to easily create most of single queries required in practice. But there is absolutely no good solution when a sub query is needed! Not only FluentJPA supports sub queries very well, it also lets put them into a separate Java function, for brevity. After all, sub query is sort of a lambda inside an SQL query, I think. -->
 > Probably the most important feature missing in JPA is **Sub Query**. We think that any serious SQL starts with them (just look [here](https://mode.com/sql-tutorial/sql-subqueries/) for few examples). Not only FluentJPA supports sub queries, it also lets put them into a separate Java(!) function. So the code looks 100% natural to a Java developer.
 
-Let's start easy and look on the simplest query possible and understand the entire flow. (A bit spiced with passing an external parameter and JPA Repository integration)
+Let's start easy and look on the simplest query possible and understand the entire flow. (A bit spiced with passing an external parameter and optional JPA Repository integration)
 
 ### Example 0 - [testPassArguments()](src/test/java/co/streamx/fluent/JPA/PersonRepositoryTest.java)
 
