@@ -65,6 +65,7 @@ public interface PGtutorialTypes {
         @Id
         @Column(name = "customer_id")
         private Integer id;
+        private String name;
         private String firstName;
         private String lastName;
         private String email;
@@ -112,5 +113,20 @@ public interface PGtutorialTypes {
         @Id
         @Column(name = "store_id")
         private Integer id;
+    }
+
+    @Entity
+    @Data
+    @Table(name = "link")
+    class Link {
+        @Id
+        @Column(name = "ID")
+        private Integer id;
+
+        private String url;
+        private String name;
+        private String description;
+        private String rel;
+        private Date lastUpdate;
     }
 }

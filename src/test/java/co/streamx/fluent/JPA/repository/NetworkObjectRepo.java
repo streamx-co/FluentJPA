@@ -3,9 +3,9 @@ package co.streamx.fluent.JPA.repository;
 import static co.streamx.fluent.SQL.AggregateFunctions.LAG;
 import static co.streamx.fluent.SQL.AggregateFunctions.MAX;
 import static co.streamx.fluent.SQL.AggregateFunctions.MIN;
+import static co.streamx.fluent.SQL.Directives.aggregateBy;
 import static co.streamx.fluent.SQL.Directives.alias;
 import static co.streamx.fluent.SQL.Directives.subQuery;
-import static co.streamx.fluent.SQL.Directives.windowOf;
 import static co.streamx.fluent.SQL.Library.collect;
 import static co.streamx.fluent.SQL.Operators.lessEqual;
 import static co.streamx.fluent.SQL.SQL.BY;
@@ -49,7 +49,7 @@ public interface NetworkObjectRepo extends JpaRepository<NetworkObject, Long>, E
 
     static Long aggregateWindow(NetworkObjectRange netRange,
                        long agg) {
-        return windowOf(agg)
+        return aggregateBy(agg)
                 .OVER(PARTITION(BY(netRange.getNetworkObject()))
                         .ORDER(BY(netRange.getFirst()), BY(netRange.getLast())))
                 .AS();

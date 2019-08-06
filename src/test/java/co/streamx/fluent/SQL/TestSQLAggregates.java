@@ -9,7 +9,6 @@ import static co.streamx.fluent.SQL.Directives.aggregateBy;
 import static co.streamx.fluent.SQL.Directives.alias;
 import static co.streamx.fluent.SQL.Directives.viewOf;
 import static co.streamx.fluent.SQL.Directives.windowFrame;
-import static co.streamx.fluent.SQL.Directives.windowOf;
 import static co.streamx.fluent.SQL.Library.COUNT;
 import static co.streamx.fluent.SQL.PostgreSQL.SQL.GENERATE_SERIES;
 import static co.streamx.fluent.SQL.PostgreSQL.SQL.registerVendorCapabilities;
@@ -125,16 +124,18 @@ public class TestSQLAggregates implements CommonTest {
 
             WindowDef w3 = windowFrame().GROUPS(FrameBounds.CURRENT_ROW);
 
-            Integer first = windowOf(FIRST_VALUE(o.getVal())).OVER(w).AS(Stats::getFirst);
-            Integer last = windowOf(LAST_VALUE(o.getVal())).OVER(w1).AS(Stats::getLast);
-            Integer nth = windowOf(NTH_VALUE(o.getVal(), 2)).OVER(w2).AS(Stats::getNth);
-            Integer nth1 = windowOf(NTH_VALUE(o.getVal(), 4)).OVER(w3).AS(Stats::getNth4);
+            Integer first = aggregateBy(FIRST_VALUE(o.getVal())).OVER(w).AS(Stats::getFirst);
+            Integer last = aggregateBy(LAST_VALUE(o.getVal())).OVER(w1).AS(Stats::getLast);
+            Integer nth = aggregateBy(NTH_VALUE(o.getVal(), 2)).FILTER(WHERE(o.getVal() == 7))
+                    .OVER(w2)
+                    .AS(Stats::getNth);
+            Integer nth1 = aggregateBy(NTH_VALUE(o.getVal(), 4)).OVER(w3).AS(Stats::getNth4);
 
             SELECT(o.getTime(), o.getSubject(), o.getVal(), first, last, nth, nth1);
             FROM(o);
         });
 
-        String expected = "SELECT t0.time, t0.subject, t0.val,  FIRST_VALUE(t0.val)  OVER(PARTITION BY  t0.subject   ORDER BY  t0.time   ROWS UNBOUNDED PRECEDING ) AS first,  LAST_VALUE(t0.val)  OVER(PARTITION BY  t0.subject   ORDER BY  t0.time   ROWS   BETWEEN UNBOUNDED PRECEDING  AND 4 FOLLOWING  EXCLUDE CURRENT ROW  ) AS last,  NTH_VALUE(t0.val, 2)  OVER(ORDER BY  t0.time  ) AS nth,  NTH_VALUE(t0.val, 4)  OVER(   GROUPS CURRENT ROW ) AS nth4 "
+        String expected = "SELECT t0.time, t0.subject, t0.val,  FIRST_VALUE(t0.val)  OVER(PARTITION BY  t0.subject   ORDER BY  t0.time   ROWS UNBOUNDED PRECEDING ) AS first,  LAST_VALUE(t0.val)  OVER(PARTITION BY  t0.subject   ORDER BY  t0.time   ROWS   BETWEEN UNBOUNDED PRECEDING  AND 4 FOLLOWING  EXCLUDE CURRENT ROW  ) AS last,  NTH_VALUE(t0.val, 2) FILTER (WHERE (t0.val = 7) ) OVER(ORDER BY  t0.time  ) AS nth,  NTH_VALUE(t0.val, 4)  OVER(   GROUPS CURRENT ROW ) AS nth4 "
                 + "FROM observations AS t0";
 
         assertQuery(query, expected);

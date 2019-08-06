@@ -2,8 +2,8 @@ package co.streamx.fluent.JPA;
 
 import static co.streamx.fluent.SQL.AggregateFunctions.MIN;
 import static co.streamx.fluent.SQL.AggregateFunctions.ROW_NUMBER;
+import static co.streamx.fluent.SQL.Directives.aggregateBy;
 import static co.streamx.fluent.SQL.Directives.subQuery;
-import static co.streamx.fluent.SQL.Directives.windowOf;
 import static co.streamx.fluent.SQL.Library.pick;
 import static co.streamx.fluent.SQL.Library.selectAll;
 import static co.streamx.fluent.SQL.Library.selectMany;
@@ -209,7 +209,7 @@ public class ModeComTutorial implements CommonTest, ModeComTutorialTypes {
     public void testWin() throws Exception {
         FluentQuery query = FluentJPA.SQL((BikeShareQ12012 bs) -> {
 
-            Long rowNumber = windowOf(ROW_NUMBER()).OVER(ORDER(BY(bs.getStartTime()))).AS("row_number");
+            Long rowNumber = aggregateBy(ROW_NUMBER()).OVER(ORDER(BY(bs.getStartTime()))).AS("row_number");
 
             selectMany(bs, bs.getStartTerminal(), bs.getStartTime(), bs.getDurationSeconds(), rowNumber);
             WHERE(less(bs.getStartTime(), DataTypes.TIMESTAMP.literal("2012-01-08")));
@@ -226,7 +226,7 @@ public class ModeComTutorial implements CommonTest, ModeComTutorialTypes {
     public void testWin1() throws Exception {
         FluentQuery query = FluentJPA.SQL((BikeShareQ12012 bs) -> {
 
-            Long rowNumber = windowOf(ROW_NUMBER())
+            Long rowNumber = aggregateBy(ROW_NUMBER())
                     .OVER(PARTITION(BY(bs.getStartTerminal())).ORDER(BY(bs.getStartTime())))
                     .AS("row_number");
 

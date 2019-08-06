@@ -4,11 +4,11 @@ import static co.streamx.fluent.SQL.AggregateFunctions.LAG;
 import static co.streamx.fluent.SQL.AggregateFunctions.MAX;
 import static co.streamx.fluent.SQL.AggregateFunctions.MIN;
 import static co.streamx.fluent.SQL.AggregateFunctions.SUM;
+import static co.streamx.fluent.SQL.Directives.aggregateBy;
 import static co.streamx.fluent.SQL.Directives.alias;
 import static co.streamx.fluent.SQL.Directives.recurseOn;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Directives.viewOf;
-import static co.streamx.fluent.SQL.Directives.windowOf;
 import static co.streamx.fluent.SQL.Operators.IN;
 import static co.streamx.fluent.SQL.Operators.UNION_ALL;
 import static co.streamx.fluent.SQL.Operators.less;
@@ -100,9 +100,10 @@ public class TestSQL implements CommonTest {
                 double height = alias(p.getHeight(), "h");
                 int age = alias(p.getAge() + (int) tt, "a");
 
-                windowOf(MAX(p.getAge())).OVER(PARTITION(BY(p.getAge())).ORDER(BY(p.getName()).ASC())).AS(MyCTE::getAge);
+                aggregateBy(MAX(p.getAge())).OVER(PARTITION(BY(p.getAge())).ORDER(BY(p.getName()).ASC()))
+                        .AS(MyCTE::getAge);
 
-                Integer age1 = windowOf(MAX(p.getAge()))
+                Integer age1 = aggregateBy(MAX(p.getAge()))
                         .OVER(PARTITION(BY(p.getAge())).ORDER(BY(p.getName()).ASC()))
                         .AS();
                 SELECT(age, height, alias(p.getAge(), MyCTE::getHeight));
@@ -210,7 +211,7 @@ public class TestSQL implements CommonTest {
 
     private static Long aggregateWindow(NetworkObjectRange netRange,
                                         long agg) {
-        return windowOf(agg)
+        return aggregateBy(agg)
                 .OVER(PARTITION(BY(netRange.getNetworkObject())).ORDER(BY(netRange.getFirst()),
                         BY(netRange.getLast())))
                 .AS();

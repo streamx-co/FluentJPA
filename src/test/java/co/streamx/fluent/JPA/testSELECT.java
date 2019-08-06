@@ -13,9 +13,11 @@ import static co.streamx.fluent.SQL.Library.pickRow;
 import static co.streamx.fluent.SQL.Library.selectAll;
 import static co.streamx.fluent.SQL.Library.selectMany;
 import static co.streamx.fluent.SQL.Operators.ALL;
+import static co.streamx.fluent.SQL.Operators.EXISTS;
 import static co.streamx.fluent.SQL.Operators.less;
 import static co.streamx.fluent.SQL.Oracle.SQL.registerVendorCapabilities;
 import static co.streamx.fluent.SQL.SQL.BY;
+import static co.streamx.fluent.SQL.SQL.DISTINCT;
 import static co.streamx.fluent.SQL.SQL.FROM;
 import static co.streamx.fluent.SQL.SQL.GROUP;
 import static co.streamx.fluent.SQL.SQL.HAVING;
@@ -26,6 +28,7 @@ import static co.streamx.fluent.SQL.SQL.WHERE;
 import static co.streamx.fluent.SQL.SQL.WITH;
 import static co.streamx.fluent.SQL.SQL.row;
 
+import javax.persistence.Column;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
@@ -36,6 +39,7 @@ import org.junit.jupiter.api.Test;
 
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
+import lombok.Getter;
 
 public class testSELECT implements CommonTest {
 
@@ -44,31 +48,38 @@ public class testSELECT implements CommonTest {
         registerVendorCapabilities(FluentJPA::setCapabilities);
     }
 
-    @Tuple("employees")
+    @Tuple
     @Data
+    @Table(name = "employees")
     public static class Employee {
+        @Id
         private int employeeId;
         private int salary;
         private float commissionPct;
-        private int departmentId;
+
+        @ManyToOne
+        @JoinColumn(name = "department_id")
+        private Department department;
     }
 
-    @Tuple("departments")
+    @Tuple
     @Data
+    @Table(name = "departments")
     public static class Department {
+        @Id
         private int departmentId;
         private String departmentName;
     }
 
     @Tuple
-    @Data
+    @Getter
     public static class DeptCost {
         private String departmentName;
         private int deptTotal;
     }
 
     @Tuple
-    @Data
+    @Getter
     public static class AvgCost {
         private int avg;
     }
@@ -85,7 +96,7 @@ public class testSELECT implements CommonTest {
 
                 SELECT(deptName, deptTotal);
                 FROM(e, d);
-                WHERE(e.getDepartmentId() == d.getDepartmentId());
+                WHERE(e.getDepartment() == d);
                 GROUP(BY(deptName));
             });
 
@@ -94,6 +105,8 @@ public class testSELECT implements CommonTest {
                 Integer avg = alias(SUM(deptCost.getDeptTotal()) / COUNT(), AvgCost::getAvg);
 
                 SELECT(avg);
+                // at this point FluentJPA is unaware that deptCost will be declared
+                // using WITH, and without byRef() will generate a sub select
                 FROM(byRef(deptCost));
             });
 
@@ -119,9 +132,10 @@ public class testSELECT implements CommonTest {
     @Table(name = "Product", schema = "Production")
     public static class Product {
         @ManyToOne
-        @JoinColumn(name = "product_model_id")
+        @JoinColumn(name = "ProductModelID")
         private ProductModel model;
         private int listPrice;
+        private String name;
     }
 
     @Tuple
@@ -129,7 +143,9 @@ public class testSELECT implements CommonTest {
     @Table(name = "Model", schema = "Production")
     public static class ProductModel {
         @Id
+        @Column(name = "ProductModelID")
         private int id;
+        private String name;
     }
 
     @Test
@@ -144,9 +160,9 @@ public class testSELECT implements CommonTest {
 
         });
 
-        String expected = "SELECT t0.product_model_id " + "FROM Production.Product t0 "
-                + "GROUP BY  t0.product_model_id  " + "HAVING (MAX(t0.list_price) >= ALL(SELECT AVG(t1.list_price) "
-                + "FROM Production.Product t1 " + "WHERE (t0.product_model_id = t1.product_model_id) ))";
+        String expected = "SELECT t0.ProductModelID " + "FROM Production.Product t0 "
+                + "GROUP BY  t0.ProductModelID  " + "HAVING (MAX(t0.list_price) >= ALL(SELECT AVG(t1.list_price) "
+                + "FROM Production.Product t1 " + "WHERE (t0.ProductModelID = t1.ProductModelID) ))";
 
         assertQuery(query, expected);
     }
@@ -156,6 +172,33 @@ public class testSELECT implements CommonTest {
             SELECT(AVG(p2.getListPrice()));
             FROM(p2);
             WHERE(model == p2.getModel());
+        });
+    }
+
+    @Test
+    public void testCorrelatedWithExists() throws Exception {
+
+        FluentQuery query = FluentJPA.SQL((Product p) -> {
+
+            SELECT(DISTINCT(p.getName()));
+            FROM(p);
+            WHERE(EXISTS(getProductModel(p, "Long-Sleeve Logo Jersey%")));
+
+        });
+
+        String expected = "SELECT DISTINCT t0.name  " + "FROM Production.Product t0 " + "WHERE EXISTS (SELECT t1.* "
+                + "FROM Production.Model t1 "
+                + "WHERE ((t0.ProductModelID = t1.ProductModelID) AND (t1.name LIKE 'Long-Sleeve Logo Jersey%' )) )";
+
+        assertQuery(query, expected);
+    }
+
+    private static ProductModel getProductModel(Product p,
+                                         String matchCriteria) {
+        return subQuery((ProductModel model) -> {
+            SELECT(model);
+            FROM(model);
+            WHERE(p.getModel() == model && model.getName().matches(matchCriteria));
         });
     }
 

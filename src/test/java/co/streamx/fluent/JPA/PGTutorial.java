@@ -2,6 +2,7 @@ package co.streamx.fluent.JPA;
 
 import static co.streamx.fluent.SQL.AggregateFunctions.AVG;
 import static co.streamx.fluent.SQL.Directives.subQuery;
+import static co.streamx.fluent.SQL.Directives.viewOf;
 import static co.streamx.fluent.SQL.Library.collect;
 import static co.streamx.fluent.SQL.Library.pick;
 import static co.streamx.fluent.SQL.Operators.BETWEEN;
@@ -10,17 +11,25 @@ import static co.streamx.fluent.SQL.Operators.IN;
 import static co.streamx.fluent.SQL.Operators.LIKE;
 import static co.streamx.fluent.SQL.Operators.NOT;
 import static co.streamx.fluent.SQL.PostgreSQL.DataTypes.DATE;
+import static co.streamx.fluent.SQL.PostgreSQL.SQL.EXCLUDED;
 import static co.streamx.fluent.SQL.PostgreSQL.SQL.registerVendorCapabilities;
 import static co.streamx.fluent.SQL.SQL.BY;
+import static co.streamx.fluent.SQL.SQL.DEFAULT;
+import static co.streamx.fluent.SQL.SQL.DELETE;
 import static co.streamx.fluent.SQL.SQL.DISTINCT;
 import static co.streamx.fluent.SQL.SQL.FROM;
+import static co.streamx.fluent.SQL.SQL.INSERT;
+import static co.streamx.fluent.SQL.SQL.ON_CONFLICT;
 import static co.streamx.fluent.SQL.SQL.ORDER;
 import static co.streamx.fluent.SQL.SQL.SELECT;
+import static co.streamx.fluent.SQL.SQL.UPDATE;
+import static co.streamx.fluent.SQL.SQL.VALUES;
 import static co.streamx.fluent.SQL.SQL.WHERE;
+import static co.streamx.fluent.SQL.SQL.row;
 import static co.streamx.fluent.SQL.ScalarFunctions.CONCAT;
 
+import java.sql.Date;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 
 import javax.persistence.Column;
@@ -28,12 +37,14 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+import javax.persistence.Table;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import co.streamx.fluent.JPA.repository.entities.postgresqltutorial.T1;
+import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
 
 public class PGTutorial implements CommonTest, PGtutorialTypes {
@@ -403,5 +414,108 @@ public class PGTutorial implements CommonTest, PGtutorialTypes {
 
         String expected = "SELECT t0.employee_name, t1.department_name  FROM employees AS t0  FULL OUTER JOIN departments AS t1  ON (t0.department_id = t1.department_id)";
         assertQuery(query, expected);
+    }
+
+    @Test
+    public void testInsertDate() {
+
+        FluentQuery query = FluentJPA.SQL((Link link) -> {
+
+            INSERT().INTO(viewOf(link, Link::getUrl, Link::getName, Link::getLastUpdate));
+            VALUES(row("http://www.facebook.com", "Facebook", DATE.literal("2013-06-01")));
+        });
+
+        String expected = "INSERT   INTO  link AS t0 (url, name, last_update)  "
+                + "VALUES ('http://www.facebook.com', 'Facebook', DATE  '2013-06-01' )";
+        assertQuery(query, expected);
+
+        query = FluentJPA.SQL((Link link) -> {
+
+            INSERT().INTO(viewOf(link, Link::getUrl, Link::getName, Link::getLastUpdate));
+            VALUES(row("https://www.tumblr.com/", "Tumblr", DEFAULT()));
+        });
+
+        expected = "INSERT   INTO  link AS t0 (url, name, last_update)  "
+                + "VALUES ('https://www.tumblr.com/', 'Tumblr', DEFAULT  )";
+        assertQuery(query, expected);
+    }
+
+    @Tuple
+    @Table(name = "link_tmp")
+    public static class LinkTmp extends Link {
+    }
+
+    @Test
+    public void testInsertFromTable() {
+
+        FluentQuery query = FluentJPA.SQL((LinkTmp linkTmp,
+                                           Link link) -> {
+
+            INSERT().INTO(linkTmp);
+            SELECT(link);
+            FROM(link);
+            WHERE(link.getLastUpdate() != null);
+        });
+
+        String expected = "INSERT   INTO link_tmp AS t0 " + "SELECT t1.* " + "FROM link AS t1 "
+                + "WHERE (t1.last_update IS NOT NULL)";
+        assertQuery(query, expected);
+
+    }
+
+    @Test
+    public void testUpdateFromTable() {
+
+        FluentQuery query = FluentJPA.SQL((LinkTmp linkTmp,
+                                           Link link) -> {
+
+            UPDATE(linkTmp).SET(() -> {
+                linkTmp.setRel(link.getRel());
+                linkTmp.setDescription(link.getDescription());
+                linkTmp.setLastUpdate(link.getLastUpdate());
+            });
+            FROM(link);
+            WHERE(linkTmp.getId() == link.getId());
+        });
+
+        String expected = "UPDATE link_tmp AS t0  SET rel = t1.rel " + "description = t1.description "
+                + "last_update = t1.last_update " + "FROM link AS t1 " + "WHERE (t0.ID = t1.ID)";
+        assertQuery(query, expected);
+
+    }
+
+    @Test
+    public void testUpsert() {
+
+        FluentQuery query = FluentJPA.SQL((Customer cust) -> {
+
+            INSERT().INTO(viewOf(cust, Customer::getName, Customer::getEmail));
+            VALUES(row("Microsoft", "hotline@microsoft.com"));
+            ON_CONFLICT(Customer::getName).DO_UPDATE().SET(() -> {
+                Customer excluded = EXCLUDED();
+                cust.setEmail(excluded.getEmail() + ";" + cust.getEmail());
+            });
+        });
+
+        String expected = "INSERT   INTO  customer AS t0 (name, email)  "
+                + "VALUES ('Microsoft', 'hotline@microsoft.com') "
+                + "ON CONFLICT(name) DO UPDATE   SET email =  CONCAT( CONCAT(  EXCLUDED  .email  ,  ';' ) ,  t0.email )";
+        assertQuery(query, expected);
+
+    }
+
+    @Test
+    public void testDeleteUsing() {
+
+        FluentQuery query = FluentJPA.SQL((LinkTmp linkTmp,
+                                           Link link) -> {
+
+            DELETE().FROM(link).USING(linkTmp);
+            WHERE(link.getId() == linkTmp.getId());
+        });
+
+        String expected = "DELETE   FROM link AS t1  USING link_tmp AS t0 " + "WHERE (t1.ID = t0.ID)";
+        assertQuery(query, expected);
+
     }
 }

@@ -30,8 +30,6 @@ import static co.streamx.fluent.SQL.TransactSQL.SQL.YEAR;
 
 import java.util.List;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 
@@ -316,17 +314,20 @@ public class TestSQLServerTutorial implements CommonTest {
     public void testCTE_B() throws Exception {
         FluentQuery query = FluentJPA.SQL(() -> {
 
-            CTESales cte_sales = subQuery((Order o) -> {
-                SELECT(alias(o.getStaff().getId(), CTESales::getStaffId), alias(COUNT(), CTESales::getOrderCount));
+            CTESales sales = subQuery((Order o) -> {
+                Integer staffId = alias(o.getStaff().getId(), CTESales::getStaffId);
+                Integer orderCount = alias(COUNT(), CTESales::getOrderCount);
+
+                SELECT(staffId, orderCount);
                 FROM(o);
                 WHERE(YEAR(o.getOrderDate()) == 2018);
-                GROUP(BY(o.getStaff()));
+                GROUP(BY(staffId));
             });
 
-            WITH(cte_sales);
+            WITH(sales);
 
-            SELECT(alias(AVG(cte_sales.getOrderCount()), "average_orders_by_staff"));
-            FROM(cte_sales);
+            SELECT(alias(AVG(sales.getOrderCount()), "average_orders_by_staff"));
+            FROM(sales);
         });
 
         String expected = "WITH q0 AS " + "(SELECT t0.staff_id AS staff_id, COUNT(*) AS order_count "
@@ -349,25 +350,26 @@ public class TestSQLServerTutorial implements CommonTest {
     public void testCTE_A() throws Exception {
         FluentQuery query = FluentJPA.SQL(() -> {
 
-            CTESalesAmounts cte_sales_amounts = subQuery((Order o,
-                                                          OrderItem oi,
-                                                          Staff s) -> {
+            CTESalesAmounts salesAmounts = subQuery((Order o,
+                                                     OrderItem oi,
+                                                     Staff s) -> {
                 String staff = alias(s.getFirstName() + " " + s.getLastName(), CTESalesAmounts::getStaff);
+                Float sales = alias(SUM(oi.getQuantity() * oi.getListPrice() * (1 - oi.getDiscount())),
+                        CTESalesAmounts::getSales);
                 Integer year = alias(YEAR(o.getOrderDate()), CTESalesAmounts::getYear);
 
-                SELECT(staff, alias(SUM(oi.getQuantity() * oi.getListPrice() * (1 - oi.getDiscount())),
-                        CTESalesAmounts::getSales), year);
+                SELECT(staff, sales, year);
 
                 FROM(o).JOIN(oi).ON(oi.getOrder() == o).JOIN(s).ON(s == o.getStaff());
 
                 GROUP(BY(staff), BY(year));
             });
 
-            WITH(cte_sales_amounts);
+            WITH(salesAmounts);
 
-            SELECT(cte_sales_amounts.getStaff(), cte_sales_amounts.getSales());
-            FROM(cte_sales_amounts);
-            WHERE(cte_sales_amounts.getYear() == 2018);
+            SELECT(salesAmounts.getStaff(), salesAmounts.getSales());
+            FROM(salesAmounts);
+            WHERE(salesAmounts.getYear() == 2018);
         });
 
         String expected = "WITH q0 AS "
@@ -404,7 +406,7 @@ public class TestSQLServerTutorial implements CommonTest {
     public void testCTE_C_Multiple() throws Exception {
         FluentQuery query = FluentJPA.SQL(() -> {
 
-            CTECategoryCounts category_counts = subQuery((Product p,
+            CTECategoryCounts categoryCounts = subQuery((Product p,
                                                           Category cat) -> {
 
                 Integer catId = alias(cat.getId(), CTECategoryCounts::getCategoryId);
@@ -418,7 +420,7 @@ public class TestSQLServerTutorial implements CommonTest {
                 GROUP(BY(catId), BY(catName));
             });
 
-            CTECategorySales category_sales = subQuery((OrderItem oi,
+            CTECategorySales categorySales = subQuery((OrderItem oi,
                                                         Product p,
                                                         Order o) -> {
                 Integer catId = alias(p.getCategory().getId(), CTECategorySales::getCategoryId);
@@ -432,15 +434,15 @@ public class TestSQLServerTutorial implements CommonTest {
                 GROUP(BY(catId));
             });
 
-            WITH(category_counts, category_sales);
+            WITH(categoryCounts, categorySales);
 
-            SELECT(category_counts.getCategoryId(), category_counts.getCategoryName(),
-                    category_counts.getProductCount(), category_sales.getSales());
+            SELECT(categoryCounts.getCategoryId(), categoryCounts.getCategoryName(),
+                    categoryCounts.getProductCount(), categorySales.getSales());
 
-            FROM(category_counts).JOIN(category_sales)
-                    .ON(category_sales.getCategoryId() == category_counts.getCategoryId());
+            FROM(categoryCounts).JOIN(categorySales)
+                    .ON(categorySales.getCategoryId() == categoryCounts.getCategoryId());
 
-            GROUP(BY(category_counts.getCategoryName()));
+            GROUP(BY(categoryCounts.getCategoryName()));
         });
 
         String expected = "WITH q0 AS "
@@ -491,14 +493,13 @@ public class TestSQLServerTutorial implements CommonTest {
         assertQuery(query, expected);
     }
 
-    @Entity
+    @Tuple
     @Getter
     public static class CTEOrg {
         @ManyToOne
         @JoinColumn(name = "staff_id")
         private Staff staff;
 
-        @Column(name = "first_name")
         private String firstName;
 
         @ManyToOne
@@ -510,9 +511,9 @@ public class TestSQLServerTutorial implements CommonTest {
     public void testCTE_Recursive_Org() throws Exception {
         FluentQuery query = FluentJPA.SQL(() -> {
 
-            CTEOrg cte_org = subQuery((CTEOrg org,
-                                       Staff staffManager,
-                                       Staff staffSubordinate) -> {
+            CTEOrg org = subQuery((CTEOrg it,
+                                   Staff staffManager,
+                                   Staff staffSubordinate) -> {
                 // initial
                 SELECT(staffManager.getId(), staffManager.getFirstName(), staffManager.getManager());
 
@@ -525,12 +526,12 @@ public class TestSQLServerTutorial implements CommonTest {
                 // recursive
                 SELECT(staffSubordinate.getId(), staffSubordinate.getFirstName(), staffSubordinate.getManager());
                 // recurse on org
-                FROM(staffSubordinate).JOIN(recurseOn(org)).ON(org.getStaff() == staffSubordinate.getManager());
+                FROM(staffSubordinate).JOIN(recurseOn(it)).ON(it.getStaff() == staffSubordinate.getManager());
             });
 
-            WITH(RECURSIVE(cte_org));
-            SELECT(cte_org.getStaff(), cte_org.getFirstName(), cte_org.getManager());
-            FROM(cte_org);
+            WITH(RECURSIVE(org));
+            SELECT(org.getStaff(), org.getFirstName(), org.getManager());
+            FROM(org);
 
         });
 
