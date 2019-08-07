@@ -467,17 +467,21 @@ final class JPAHelpers {
 
     public static Field getField(Method m) {
 
-        String name = getFieldName(m);
+        String original = m.getName();
 
-        name = decapitalize(name);
+        String name = decapitalize(getFieldName(m));
         Class<?> clazz = m.getDeclaringClass();
         for (;;) {
             try {
                 return clazz.getDeclaredField(name);
             } catch (NoSuchFieldException e) {
-                clazz = clazz.getSuperclass();
-                if (clazz == Object.class || clazz == null)
-                    throw TranslationError.UNMAPPED_FIELD.getError(e, name);
+                try {
+                    return clazz.getDeclaredField(original);
+                } catch (NoSuchFieldException e1) {
+                    clazz = clazz.getSuperclass();
+                    if (clazz == Object.class || clazz == null)
+                        throw TranslationError.UNMAPPED_FIELD.getError(e1, original);
+                }
             }
         }
     }
