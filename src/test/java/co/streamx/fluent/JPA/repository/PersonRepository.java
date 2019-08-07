@@ -14,16 +14,22 @@ import org.springframework.stereotype.Repository;
 import co.streamx.fluent.JPA.FluentJPA;
 import co.streamx.fluent.JPA.FluentQuery;
 import co.streamx.fluent.JPA.repository.entities.Person;
+import co.streamx.fluent.functions.Consumer1;
 
 @Repository
 public interface PersonRepository extends CrudRepository<Person, Long>, EntityManagerSupplier {
 
     default List<Person> getAllByName(String name) {
-        FluentQuery query = FluentJPA.SQL((Person p) -> {
+        Consumer1<Person> sql = (Person p) -> {
             SELECT(p);
             FROM(p);
+        };
+        FluentQuery query = FluentJPA.SQL((Person p) -> {
+            sql.accept(p);
             WHERE(p.getName() == name);
         });
+
+        System.out.println(query);
 
         return query.createQuery(getEntityManager(), Person.class).getResultList();
     }

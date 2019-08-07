@@ -131,8 +131,16 @@ class Normalizer extends SimpleExpressionVisitor {
 
         Executable method = (Executable) member;
 
-        if (method.isAnnotationPresent(Local.class))
-            return Expression.constant(LambdaExpression.compile(e).apply(null));
+        if (method.isAnnotationPresent(Local.class)) {
+            Object result = LambdaExpression.compile(e).apply(contextArgumentsArray(e.getArguments()));
+            boolean isSynthetic = result != null && result.getClass().isSynthetic();
+            if (isSynthetic) {
+                LambdaExpression<?> parsed = LambdaExpression.parse(result);
+                return visit(parsed);
+            }
+
+            return Expression.constant(result);
+        }
 
         Map<String, Map<Executable, LambdaExpression<?>>> substitutions = SQLConfiguratorImpl.getSubstitutions();
         Map<Executable, LambdaExpression<?>> subByName = substitutions.get(method.getName());
@@ -156,6 +164,16 @@ class Normalizer extends SimpleExpressionVisitor {
         }
 
         return super.visit(e);
+    }
+
+    private Object[] contextArgumentsArray(List<Expression> args) {
+        if (args.isEmpty())
+            return null;
+        List<Expression> contextArguments = getContextArguments();
+        return args.stream()
+                .map(e -> e instanceof ParameterExpression ? contextArguments.get(((ParameterExpression) e).getIndex())
+                        : e)
+                .toArray();
     }
 
     private static boolean isNotation(AnnotatedElement annotated) {

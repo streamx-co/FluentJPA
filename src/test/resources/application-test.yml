@@ -5,6 +5,7 @@ trace: false # Enable trace logs.
 logging:
     level:
         ROOT: INFO
+        co.streamx.fluent.JPA: DEBUG
 
 spring:
     main:

@@ -255,6 +255,13 @@ final class DSLInterpreter
     @Override
     public Function<List<Expression>, Function<List<CharSequence>, CharSequence>> visit(ConstantExpression e) {
         Object value = e.getValue();
+        if (value instanceof Expression) {
+            return eargs -> {
+                Expression ex = (Expression) value;
+                argumentsTarget = ex;
+                return ex.accept(this).apply(eargs);
+            };
+        }
         return eargs -> {
             String valueOf = String.valueOf(value);
             if (collectingParameters.orElse(false)) {
@@ -285,6 +292,13 @@ final class DSLInterpreter
         };
     }
 
+    private static boolean isLambda(Object e) {
+        if (e instanceof LambdaExpression)
+            return true;
+
+        return e instanceof ConstantExpression && isLambda(((ConstantExpression) e).getValue());
+    }
+
     @Override
     public Function<List<Expression>, Function<List<CharSequence>, CharSequence>> visit(InvocationExpression e) {
         InvocableExpression target = e.getTarget();
@@ -293,7 +307,7 @@ final class DSLInterpreter
         List<Expression> allArgs = e.getArguments();
 
         Stream<Function<List<Expression>, Function<List<CharSequence>, CharSequence>>> args = allArgs.stream()
-                .map(p -> p.accept(this));
+                .map(p -> isLambda(p) ? x -> y -> null : p.accept(this));
 
         return eargs -> {
 
@@ -384,13 +398,16 @@ final class DSLInterpreter
             while (arg instanceof UnaryExpression)
                 arg = ((UnaryExpression) arg).getFirst();
 
-            // for delegates
-            if (!(arg instanceof LambdaExpression)) {
-                if (arg.getResultType() == Object.class)
-                    continue;
+            if (arg.getResultType() == Object.class)
+                continue; // better leave parameter
 
+            // don't forward anything except LambdaExpression
+            if (arg instanceof ConstantExpression) {
+                if (!(((ConstantExpression) arg).getValue() instanceof LambdaExpression))
+                    arg = Expression.parameter(arguments.get(i).getResultType(), i);
+
+            } else if (!(arg instanceof LambdaExpression)) {
                 arg = Expression.parameter(arguments.get(i).getResultType(), i);
-
             }
 
             result.set(i, arg);

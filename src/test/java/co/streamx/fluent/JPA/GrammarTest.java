@@ -9,9 +9,11 @@ import static co.streamx.fluent.SQL.Oracle.SQL.MULTISET_UNION;
 import static co.streamx.fluent.SQL.Oracle.SQL.ROUND;
 import static co.streamx.fluent.SQL.Oracle.SQL.TO_DATE;
 import static co.streamx.fluent.SQL.Oracle.SQL.TRUNC;
+import static co.streamx.fluent.SQL.PostgreSQL.SQL.LIMIT;
 import static co.streamx.fluent.SQL.SQL.DISTINCT;
 import static co.streamx.fluent.SQL.SQL.FROM;
 import static co.streamx.fluent.SQL.SQL.SELECT;
+import static co.streamx.fluent.SQL.SQL.WHERE;
 import static co.streamx.fluent.SQL.ScalarFunctions.CAST;
 import static co.streamx.fluent.SQL.TransactSQL.SQL.HASHBYTES;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,6 +25,7 @@ import java.util.EnumSet;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import co.streamx.fluent.JPA.repository.entities.Person;
 import co.streamx.fluent.SQL.DataType;
 import co.streamx.fluent.SQL.TestSQLAggregates.Houshold;
 import co.streamx.fluent.SQL.Oracle.Format;
@@ -31,9 +34,12 @@ import co.streamx.fluent.SQL.Oracle.Ignore;
 import co.streamx.fluent.SQL.TransactSQL.DataTypeNames;
 import co.streamx.fluent.SQL.TransactSQL.DataTypes;
 import co.streamx.fluent.SQL.TransactSQL.HashingAlgorithm;
+import co.streamx.fluent.functions.Consumer1;
+import co.streamx.fluent.functions.Function2;
 import co.streamx.fluent.notation.Capability;
+import co.streamx.fluent.notation.Local;
 
-public class GrammarTest {
+public class GrammarTest implements CommonTest {
 
     @BeforeAll
     public static void init() {
@@ -153,5 +159,48 @@ public class GrammarTest {
         String sql = query.toString();
         System.out.println(sql);
         assertEquals(expected, sql.replace("\n", ""));
+    }
+
+    @Test
+    public void testExt1() {
+        String name = "Dave";
+        Consumer1<Person> sql = p -> {
+            SELECT(p);
+        };
+
+        Consumer1<Person> sql1 = p -> {
+            sql.accept(p);
+            FROM(p);
+        };
+
+        Consumer1<Person> sql2 = sql1.andThen(p -> LIMIT(2));
+
+        Function2<Person, String, Boolean> crit = (p,
+                                                   n) -> {
+            return dynamicWhere().apply(p, n) && p.getName() == n;
+        };
+
+        Function2<Person, String, Boolean> crit1 = dynamicWhere2(crit);
+
+        FluentQuery query = FluentJPA.SQL((Person p) -> {
+            sql2.accept(p);
+
+            WHERE(crit1.apply(p, name));
+        });
+
+        String expected = "SELECT t0.* " + "FROM PERSON_TABLE AS t0 LIMIT 2 "
+                + "WHERE (((t0.name = ?1) AND (t0.name = ?1)) AND t0.balancer)";
+        assertQuery(query, expected);
+    }
+
+    @Local
+    private static Function2<Person, String, Boolean> dynamicWhere() {
+        return (p,
+                name) -> p.getName() == name;
+    }
+
+    private static Function2<Person, String, Boolean> dynamicWhere2(Function2<Person, String, Boolean> crit) {
+        return crit.and((p,
+                         n) -> p.isLoadBalancer());
     }
 }
