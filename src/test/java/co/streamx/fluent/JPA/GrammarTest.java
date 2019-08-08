@@ -39,7 +39,6 @@ import co.streamx.fluent.SQL.TransactSQL.DataTypes;
 import co.streamx.fluent.SQL.TransactSQL.HashingAlgorithm;
 import co.streamx.fluent.functions.Consumer1;
 import co.streamx.fluent.functions.Function1;
-import co.streamx.fluent.functions.Function2;
 import co.streamx.fluent.notation.Capability;
 import co.streamx.fluent.notation.Local;
 
@@ -216,35 +215,32 @@ public class GrammarTest implements CommonTest {
                                         int age,
                                         boolean filterByAge) {
 
-        Function2<Person, Integer, Boolean> dynamicFilter = chain(getAgeFilter(filterByAge));
+        Function1<Person, Boolean> dynamicFilter = chain(getAgeFilter(age, filterByAge));
 
-        Function2<Person, Integer, Boolean> dynamicFilter1 = (p,
-                                                              i) -> getAgeFilter(filterByAge).apply(p, i)
+        Function1<Person, Boolean> dynamicFilter1 = (p) -> getAgeFilter(age, filterByAge).apply(p)
                                                                       && p.isLoadBalancer();
 
         FluentQuery query = FluentJPA.SQL((Person p) -> {
             SELECT(p);
             FROM(p);
 
-            WHERE(p.getName() == name && dynamicFilter.apply(p, age));
+            WHERE(p.getName() == name && dynamicFilter.apply(p));
         });
 
         return query;// .createQuery(null, Person.class).getResultList();
     }
 
     @Local
-    private Function2<Person, Integer, Boolean> getAgeFilter(boolean filterByAge) {
+    private Function1<Person, Boolean> getAgeFilter(int age,
+                                                    boolean filterByAge) {
         if (filterByAge)
-            return (person,
-                    age) -> person.getAge() == age;
+            return (person) -> person.getAge() == parameter(age);
 
-        return (x,
-                y) -> true;
+        return (x) -> true;
     }
 
-    private static Function2<Person, Integer, Boolean> chain(Function2<Person, Integer, Boolean> filter) {
-        return filter.or((p,
-                          i) -> p.isLoadBalancer());
+    private static Function1<Person, Boolean> chain(Function1<Person, Boolean> filter) {
+        return filter.or((p) -> p.isLoadBalancer());
     }
 
     @Local
