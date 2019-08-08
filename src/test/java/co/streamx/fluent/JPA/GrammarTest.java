@@ -201,13 +201,13 @@ public class GrammarTest implements CommonTest {
         FluentQuery query = getByNameAndAge("John", 5, false);
 
         String expected = "SELECT t0.* " + "FROM PERSON_TABLE AS t0 "
-                + "WHERE ((t0.name = ?1) AND t0.balancer)";
+                + "WHERE ((t0.name = ?1) AND (t0.balancer AND (t0.balancer AND (false OR t0.balancer) ) ) ) ";
         assertQuery(query, expected);
 
         query = getByNameAndAge("John", 5, true);
 
         expected = "SELECT t0.* " + "FROM PERSON_TABLE AS t0 "
-                + "WHERE ((t0.name = ?1) AND ( (t0.aging = ?2) OR t0.balancer) )";
+                + "WHERE ((t0.name = ?1) AND ( ( (t0.aging = ?2) OR t0.balancer) AND ( ( (t0.aging = ?3) OR t0.balancer) AND ( (t0.aging = ?4) OR t0.balancer) ) ) ) ";
         assertQuery(query, expected);
     }
 
@@ -217,14 +217,15 @@ public class GrammarTest implements CommonTest {
 
         Function1<Person, Boolean> dynamicFilter = chain(getAgeFilter(age, filterByAge));
 
-        Function1<Person, Boolean> dynamicFilter1 = (p) -> getAgeFilter(age, filterByAge).apply(p)
-                                                                      && p.isLoadBalancer();
+        Function1<Person, Boolean> dynamicFilter1 = getAgeFilter(age, filterByAge).or(Person::isLoadBalancer);
+
+        Function1<Person, Boolean> dynamicFilter2 = p -> getAgeFilter(age, filterByAge).apply(p) || p.isLoadBalancer();
 
         FluentQuery query = FluentJPA.SQL((Person p) -> {
             SELECT(p);
             FROM(p);
 
-            WHERE(p.getName() == name && dynamicFilter.apply(p));
+            WHERE(p.getName() == name && dynamicFilter.apply(p) && dynamicFilter1.apply(p) && dynamicFilter2.apply(p));
         });
 
         return query;// .createQuery(null, Person.class).getResultList();
