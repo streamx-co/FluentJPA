@@ -201,7 +201,7 @@ public class GrammarTest implements CommonTest {
         FluentQuery query = getByNameAndAge("John", 5, false);
 
         String expected = "SELECT t0.* " + "FROM PERSON_TABLE AS t0 "
-                + "WHERE ((t0.name = ?1) AND (true OR t0.balancer) )";
+                + "WHERE ((t0.name = ?1) AND t0.balancer)";
         assertQuery(query, expected);
 
         query = getByNameAndAge("John", 5, true);
@@ -236,7 +236,7 @@ public class GrammarTest implements CommonTest {
         if (filterByAge)
             return (person) -> person.getAge() == parameter(age);
 
-        return (x) -> true;
+        return Function1.FALSE();
     }
 
     private static Function1<Person, Boolean> chain(Function1<Person, Boolean> filter) {

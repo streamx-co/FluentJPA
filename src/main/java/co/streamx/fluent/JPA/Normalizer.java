@@ -134,7 +134,7 @@ class Normalizer extends SimpleExpressionVisitor {
 
         if (method.isAnnotationPresent(Local.class)) {
             Object result = LambdaExpression.compile(e).apply(contextArgumentsArray(e.getArguments()));
-            boolean isSynthetic = result != null && result.getClass().isSynthetic();
+            boolean isSynthetic = result != null && isFunctional(result.getClass());
             if (isSynthetic) {
                 LambdaExpression<?> parsed = LambdaExpression.parse(result);
                 return visit(parsed);
@@ -165,6 +165,17 @@ class Normalizer extends SimpleExpressionVisitor {
         }
 
         return super.visit(e);
+    }
+
+    private static boolean isFunctional(Class<?> clazz) {
+        if (clazz.isSynthetic())
+            return true;
+
+        for (Class<?> i : clazz.getInterfaces())
+            if (i.isAnnotationPresent(FunctionalInterface.class))
+                return true;
+
+        return false;
     }
 
     private Object[] contextArgumentsArray(List<Expression> args) {
