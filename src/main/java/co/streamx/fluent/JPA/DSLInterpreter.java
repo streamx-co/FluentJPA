@@ -47,6 +47,7 @@ import co.streamx.fluent.notation.CommonTableExpression;
 import co.streamx.fluent.notation.Context;
 import co.streamx.fluent.notation.Literal;
 import co.streamx.fluent.notation.Operator;
+import co.streamx.fluent.notation.Parameter;
 import co.streamx.fluent.notation.ParameterContext;
 import co.streamx.fluent.notation.SubQuery;
 import lombok.Getter;
@@ -263,33 +264,74 @@ final class DSLInterpreter
             };
         }
         return eargs -> {
-            String valueOf = String.valueOf(value);
-            if (collectingParameters.orElse(false)) {
-                indexedParameters.add(value);
-                int index = indexedParameters.size();
-                CharSequence name = new StringBuilder().append(index);
-                parameterRefs.add(name);
-                return (args) -> name;
-            }
+            if (collectingParameters.orElse(false))
+                return args -> registerParameter(value);
 
-            CharSequence string;
-
-            if (value instanceof CharSequence || value instanceof Character) {
-                // wrap with quotes and escape existing quotes
-                StringBuilder out = new StringBuilder().append(SINGLE_QUOTE_CHAR);
-                if (value instanceof CharSequence)
-                    out.append((CharSequence) value);
-                else
-                    out.append((char) value);
-                for (int i = out.length() - 1; i > 0; i--) {
-                    if (out.charAt(i) == SINGLE_QUOTE_CHAR)
-                        out.insert(i, SINGLE_QUOTE_CHAR);
-                }
-                string = out.append(SINGLE_QUOTE_CHAR);
-            } else
-                string = valueOf;
-            return (args) -> string;
+            return args -> new DynamicConstant(value);
         };
+    }
+
+    @RequiredArgsConstructor
+    private class DynamicConstant implements CharSequence {
+
+        private CharSequence string;
+        private final Object value;
+
+        private void lazyInit() {
+            if (string == null) {
+                if (value instanceof CharSequence || value instanceof Character) {
+                    // wrap with quotes and escape existing quotes
+                    StringBuilder out = new StringBuilder().append(SINGLE_QUOTE_CHAR);
+                    if (value instanceof CharSequence)
+                        out.append((CharSequence) value);
+                    else
+                        out.append((char) value);
+                    for (int i = out.length() - 1; i > 0; i--) {
+                        if (out.charAt(i) == SINGLE_QUOTE_CHAR)
+                            out.insert(i, SINGLE_QUOTE_CHAR);
+                    }
+                    string = out.append(SINGLE_QUOTE_CHAR);
+                } else
+                    string = String.valueOf(value);
+            }
+        }
+
+        public CharSequence registerAsParameter() {
+            return new StringBuilder().append(QUESTION_MARK_CHAR).append(registerParameter(value));
+        }
+
+        @Override
+        public int length() {
+            lazyInit();
+            return string.length();
+        }
+
+        @Override
+        public char charAt(int index) {
+            lazyInit();
+            return string.charAt(index);
+        }
+
+        @Override
+        public CharSequence subSequence(int start,
+                                        int end) {
+            lazyInit();
+            return string.subSequence(start, end);
+        }
+
+        @Override
+        public String toString() {
+            lazyInit();
+            return string.toString();
+        }
+    }
+
+    private StringBuilder registerParameter(Object value) {
+        indexedParameters.add(value);
+        int index = indexedParameters.size();
+        StringBuilder name = new StringBuilder().append(index);
+        parameterRefs.add(name);
+        return name;
     }
 
     private static boolean isLambda(Object e) {
@@ -624,6 +666,16 @@ final class DSLInterpreter
                         return "";
                     };
                 }
+            }
+
+            if (m.isAnnotationPresent(Parameter.class)) {
+                return ipp -> pp -> {
+                    CharSequence seq = pp.get(0);
+                    if (!(seq instanceof DynamicConstant))
+                        throw TranslationError.REQUIRES_EXTERNAL_PARAMETER.getError(seq);
+
+                    return ((DynamicConstant) seq).registerAsParameter();
+                };
             }
 
             SubQueryManager subQueries = getSubQueries();

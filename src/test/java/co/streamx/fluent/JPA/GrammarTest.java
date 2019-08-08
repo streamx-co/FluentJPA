@@ -1,5 +1,6 @@
 package co.streamx.fluent.JPA;
 
+import static co.streamx.fluent.SQL.Directives.parameter;
 import static co.streamx.fluent.SQL.Directives.semicolon;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Oracle.SQL.DUAL;
@@ -19,8 +20,10 @@ import static co.streamx.fluent.SQL.TransactSQL.SQL.HASHBYTES;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.EnumSet;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -35,6 +38,7 @@ import co.streamx.fluent.SQL.TransactSQL.DataTypeNames;
 import co.streamx.fluent.SQL.TransactSQL.DataTypes;
 import co.streamx.fluent.SQL.TransactSQL.HashingAlgorithm;
 import co.streamx.fluent.functions.Consumer1;
+import co.streamx.fluent.functions.Function1;
 import co.streamx.fluent.functions.Function2;
 import co.streamx.fluent.notation.Capability;
 import co.streamx.fluent.notation.Local;
@@ -163,7 +167,7 @@ public class GrammarTest implements CommonTest {
 
     @Test
     public void testExt1() {
-        String name = "Dave";
+        List<String> names = Arrays.asList("Dave", "Steve");
         Consumer1<Person> sql = p -> {
             SELECT(p);
         };
@@ -174,33 +178,114 @@ public class GrammarTest implements CommonTest {
         };
 
         Consumer1<Person> sql2 = sql1.andThen(p -> LIMIT(2));
-
-        Function2<Person, String, Boolean> crit = (p,
-                                                   n) -> {
-            return dynamicWhere().apply(p, n) && p.getName() == n;
+        String x1 = names.get(0);
+        String x2 = names.get(1);
+        Function1<Person, Boolean> crit = (p) -> {
+            return dynamicWhere(x1).apply(p) && p.getName() == parameter(x2);
         };
 
-        Function2<Person, String, Boolean> crit1 = dynamicWhere2(crit);
+        Function1<Person, Boolean> crit1 = dynamicWhere2(crit);
 
         FluentQuery query = FluentJPA.SQL((Person p) -> {
             sql2.accept(p);
 
-            WHERE(crit1.apply(p, name));
+            WHERE(crit1.apply(p));
         });
 
         String expected = "SELECT t0.* " + "FROM PERSON_TABLE AS t0 LIMIT 2 "
-                + "WHERE (((t0.name = ?1) AND (t0.name = ?1)) AND t0.balancer)";
+                + "WHERE (((t0.name = ?1) AND (t0.name = ?2)) AND t0.balancer)";
         assertQuery(query, expected);
     }
 
-    @Local
-    private static Function2<Person, String, Boolean> dynamicWhere() {
-        return (p,
-                name) -> p.getName() == name;
+    @Test
+    public void testExt2() {
+        FluentQuery query = getByNameAndAge("John", 5, false);
+
+        String expected = "SELECT t0.* " + "FROM PERSON_TABLE AS t0 "
+                + "WHERE ((t0.name = ?1) AND (true OR t0.balancer) )";
+        assertQuery(query, expected);
+
+        query = getByNameAndAge("John", 5, true);
+
+        expected = "SELECT t0.* " + "FROM PERSON_TABLE AS t0 "
+                + "WHERE ((t0.name = ?1) AND ( (t0.aging = ?2) OR t0.balancer) )";
+        assertQuery(query, expected);
     }
 
-    private static Function2<Person, String, Boolean> dynamicWhere2(Function2<Person, String, Boolean> crit) {
-        return crit.and((p,
-                         n) -> p.isLoadBalancer());
+    public FluentQuery getByNameAndAge(String name,
+                                        int age,
+                                        boolean filterByAge) {
+
+        Function2<Person, Integer, Boolean> dynamicFilter = chain(getAgeFilter(filterByAge));
+
+        Function2<Person, Integer, Boolean> dynamicFilter1 = (p,
+                                                              i) -> getAgeFilter(filterByAge).apply(p, i)
+                                                                      && p.isLoadBalancer();
+
+        FluentQuery query = FluentJPA.SQL((Person p) -> {
+            SELECT(p);
+            FROM(p);
+
+            WHERE(p.getName() == name && dynamicFilter.apply(p, age));
+        });
+
+        return query;// .createQuery(null, Person.class).getResultList();
+    }
+
+    @Local
+    private Function2<Person, Integer, Boolean> getAgeFilter(boolean filterByAge) {
+        if (filterByAge)
+            return (person,
+                    age) -> person.getAge() == age;
+
+        return (x,
+                y) -> true;
+    }
+
+    private static Function2<Person, Integer, Boolean> chain(Function2<Person, Integer, Boolean> filter) {
+        return filter.or((p,
+                          i) -> p.isLoadBalancer());
+    }
+
+    @Local
+    private static Function1<Person, Boolean> dynamicWhere(String name) {
+        return p -> p.getName() == parameter(name);
+    }
+
+    private static Function1<Person, Boolean> dynamicWhere2(Function1<Person, Boolean> crit) {
+        return crit.and((p) -> p.isLoadBalancer());
+    }
+
+    @Test
+    public void testExt3() {
+        String[] args = { "John%", "Dave%", "Michael%" };
+        FluentQuery query = getByNameLike(Arrays.asList(args));
+
+        String expected = "SELECT t0.* " + "FROM PERSON_TABLE AS t0 "
+                + "WHERE (((t0.name LIKE ?1 ) OR (t0.name LIKE ?2 )) OR (t0.name LIKE ?3 ))";
+        assertQuery(query, expected, args);
+    }
+
+    public FluentQuery getByNameLike(List<String> likes) {
+
+        Function1<Person, Boolean> dynamicFilter = buildOr(likes);
+
+        FluentQuery query = FluentJPA.SQL((Person p) -> {
+            SELECT(p);
+            FROM(p);
+
+            WHERE(dynamicFilter.apply(p));
+        });
+
+        return query;// .createQuery(null, Person.class).getResultList();
+    }
+
+    private Function1<Person, Boolean> buildOr(List<String> likes) {
+        Function1<Person, Boolean> criteria = Function1.FALSE();
+
+        for (String like : likes)
+            criteria = criteria.or(p -> p.getName().matches(parameter(like)));
+
+        return criteria;
     }
 }

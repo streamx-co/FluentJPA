@@ -23,6 +23,7 @@ import co.streamx.fluent.extree.expression.LambdaExpression;
 import co.streamx.fluent.extree.expression.MemberExpression;
 import co.streamx.fluent.extree.expression.ParameterExpression;
 import co.streamx.fluent.extree.expression.SimpleExpressionVisitor;
+import co.streamx.fluent.extree.expression.UnaryExpression;
 import co.streamx.fluent.notation.Literal;
 import co.streamx.fluent.notation.Local;
 import co.streamx.fluent.notation.Notation;
@@ -171,9 +172,23 @@ class Normalizer extends SimpleExpressionVisitor {
             return null;
         List<Expression> contextArguments = getContextArguments();
         return args.stream()
-                .map(e -> e instanceof ParameterExpression ? contextArguments.get(((ParameterExpression) e).getIndex())
-                        : e)
+                .map(e -> {
+                    Expression x = removeCast(e);
+                    if (x instanceof ParameterExpression)
+                        x = contextArguments.get(((ParameterExpression) x).getIndex());
+
+                    if (!(x instanceof ConstantExpression))
+                        throw TranslationError.REQUIRES_EXTERNAL_PARAMETER.getError(x);
+
+                    return ((ConstantExpression) x).getValue();
+                })
                 .toArray();
+    }
+
+    private static Expression removeCast(Expression x) {
+        return (x != null && x.getExpressionType() == ExpressionType.Convert)
+                ? removeCast(((UnaryExpression) x).getFirst())
+                : x;
     }
 
     private static boolean isNotation(AnnotatedElement annotated) {
