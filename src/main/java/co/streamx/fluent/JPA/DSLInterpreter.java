@@ -671,6 +671,8 @@ final class DSLInterpreter
             if (m.isAnnotationPresent(Parameter.class)) {
                 return ipp -> pp -> {
                     CharSequence seq = pp.get(0);
+                    if (!Strings.isNullOrEmpty(seq) && seq.charAt(0) == QUESTION_MARK_CHAR)
+                        return seq;
                     if (!(seq instanceof DynamicConstant))
                         throw TranslationError.REQUIRES_EXTERNAL_PARAMETER.getError(seq);
 

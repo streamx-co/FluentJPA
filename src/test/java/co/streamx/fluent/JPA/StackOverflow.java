@@ -4,6 +4,7 @@ import static co.streamx.fluent.SQL.AggregateFunctions.ROW_NUMBER;
 import static co.streamx.fluent.SQL.AggregateFunctions.SUM;
 import static co.streamx.fluent.SQL.Directives.aggregateBy;
 import static co.streamx.fluent.SQL.Directives.alias;
+import static co.streamx.fluent.SQL.Directives.parameter;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Library.pick;
 import static co.streamx.fluent.SQL.MySQL.SQL.STR_TO_DATE;
@@ -278,7 +279,7 @@ public class StackOverflow implements CommonTest {
         FluentQuery query = FluentJPA.SQL((EntityA a) -> {
             UPDATE(a).SET(() -> {
                 a.setNormalString(string1);
-                a.getEmbeddedEntity().setNormalString2(string2);
+                a.getEmbeddedEntity().setNormalString2(parameter(string2));
             });
         });
 
