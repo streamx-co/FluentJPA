@@ -11,8 +11,10 @@ import static co.streamx.fluent.SQL.Oracle.SQL.ROUND;
 import static co.streamx.fluent.SQL.Oracle.SQL.TO_DATE;
 import static co.streamx.fluent.SQL.Oracle.SQL.TRUNC;
 import static co.streamx.fluent.SQL.PostgreSQL.SQL.LIMIT;
+import static co.streamx.fluent.SQL.SQL.BY;
 import static co.streamx.fluent.SQL.SQL.DISTINCT;
 import static co.streamx.fluent.SQL.SQL.FROM;
+import static co.streamx.fluent.SQL.SQL.ORDER;
 import static co.streamx.fluent.SQL.SQL.SELECT;
 import static co.streamx.fluent.SQL.SQL.WHERE;
 import static co.streamx.fluent.SQL.ScalarFunctions.CAST;
@@ -24,6 +26,13 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
+import javax.persistence.Table;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -41,6 +50,7 @@ import co.streamx.fluent.functions.Consumer1;
 import co.streamx.fluent.functions.Function1;
 import co.streamx.fluent.notation.Capability;
 import co.streamx.fluent.notation.Local;
+import lombok.Data;
 
 public class GrammarTest implements CommonTest {
 
@@ -282,6 +292,86 @@ public class GrammarTest implements CommonTest {
 
         for (String like : likes)
             criteria = criteria.or(p -> p.getName().matches(parameter(like)));
+
+        return criteria;
+    }
+
+    @Entity
+    @Data // lombok
+    @Table(name = "utilization_dtls", schema = "claims")
+    public static class UtilizationDTL {
+        @Id
+        @Column(name = "utilization_dtl_id")
+        private int id;
+
+        private boolean isCompleted;
+    }
+
+    @Entity
+    @Data // lombok
+    @Table(name = "utilization_coverage_dtls", schema = "claims")
+    public static class UtilizationCoverageDTL {
+        @Id
+        @Column(name = "utilization_coverage_dtl_id")
+        private int id;
+
+        @ManyToOne
+        @JoinColumn(name = "utilization_dtl_id")
+        private UtilizationDTL utilization;
+
+        @ManyToOne
+        @JoinColumn(name = "coverage_id")
+        private CoverageMaster master;
+    }
+
+    @Entity
+    @Data // lombok
+    @Table(name = "coverage_master", schema = "claims")
+    public static class CoverageMaster {
+        @Id
+        @Column(name = "coverage_id")
+        private int id;
+
+        private String coverageName;
+    }
+
+    @Test
+    public void testExt4() {
+        String[] args = { "John%", "Dave%", "Michael%" };
+        FluentQuery query = getByNameLike1(Arrays.asList(args));
+
+        String expected = "SELECT DISTINCT t0.utilization_dtl_id  "
+                + "FROM claims.utilization_dtls AS t0  INNER JOIN claims.utilization_coverage_dtls AS t1  ON (t1.utilization_dtl_id = t0.utilization_dtl_id)  INNER JOIN claims.coverage_master AS t2  ON (t1.coverage_id = t2.coverage_id) "
+                + "WHERE ((((LOWER(t2.coverage_name) LIKE ?1 ) OR (LOWER(t2.coverage_name) LIKE ?2 )) OR (LOWER(t2.coverage_name) LIKE ?3 )) AND t0.is_completed) "
+                + "ORDER BY  t0.utilization_dtl_id";
+        assertQuery(query, expected, args);
+    }
+
+    public FluentQuery getByNameLike1(List<String> likes) {
+
+        Function1<CoverageMaster, Boolean> dynamicFilter = buildOr1(likes);
+
+        FluentQuery query = FluentJPA.SQL((UtilizationDTL util,
+                                           UtilizationCoverageDTL utilizationCover,
+                                           CoverageMaster coverMaster) -> {
+            SELECT(DISTINCT(util.getId()));
+            FROM(util).JOIN(utilizationCover)
+                    .ON(utilizationCover.getUtilization() == util)
+                    .JOIN(coverMaster)
+                    .ON(utilizationCover.getMaster() == coverMaster);
+
+            WHERE(dynamicFilter.apply(coverMaster) && util.isCompleted());
+            ORDER(BY(util.getId()));
+        });
+
+        return query;// .createQuery(null, Person.class).getResultList();
+    }
+
+    private Function1<CoverageMaster, Boolean> buildOr1(List<String> likes) {
+        Function1<CoverageMaster, Boolean> criteria = Function1.FALSE();
+
+        for (String like : likes)
+            criteria = criteria.or(p -> p.getCoverageName().toLowerCase().matches(parameter(like)));
 
         return criteria;
     }
