@@ -5,7 +5,7 @@ CREATE TABLE PERSON_TABLE (
 	name varchar(255) not null,
 	aging INT not null,
 	height INT,
-	balancer BOOL
+	balancer BOOL DEFAULT TRUE
 );
 
 CREATE TABLE OBJECT_CON (

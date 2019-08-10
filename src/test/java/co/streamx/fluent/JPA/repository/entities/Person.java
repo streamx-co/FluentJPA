@@ -13,8 +13,9 @@ import lombok.EqualsAndHashCode;
 @Table(name = "PERSON_TABLE")
 public class Person extends EntityBase {
     private String name;
+
     @Column(name = "aging")
-    private int age;
+    private Integer age;
     private Integer height = 1;
     @Column(name = "balancer")
     private boolean isLoadBalancer;

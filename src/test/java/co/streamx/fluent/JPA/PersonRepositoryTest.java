@@ -35,4 +35,10 @@ public class PersonRepositoryTest extends IntegrationTest {
     public void testPassArguments() {
         assertThat(personRepository.getAllByName("Dave").size()).isEqualTo(1);
     }
+
+    @Test
+    @Transactional
+    public void testInsertDefault() {
+        assertThat(personRepository.insertDefault("John", 4).getId()).isNotNull();
+    }
 }

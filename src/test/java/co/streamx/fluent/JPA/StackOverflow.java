@@ -6,13 +6,17 @@ import static co.streamx.fluent.SQL.Directives.aggregateBy;
 import static co.streamx.fluent.SQL.Directives.alias;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Library.pick;
+import static co.streamx.fluent.SQL.MySQL.SQL.STR_TO_DATE;
 import static co.streamx.fluent.SQL.Operators.BETWEEN;
 import static co.streamx.fluent.SQL.Operators.lessEqual;
+import static co.streamx.fluent.SQL.Oracle.SQL.TO_DATE;
 import static co.streamx.fluent.SQL.Oracle.SQL.registerVendorCapabilities;
 import static co.streamx.fluent.SQL.SQL.BY;
 import static co.streamx.fluent.SQL.SQL.FROM;
+import static co.streamx.fluent.SQL.SQL.GROUP;
 import static co.streamx.fluent.SQL.SQL.PARTITION;
 import static co.streamx.fluent.SQL.SQL.SELECT;
+import static co.streamx.fluent.SQL.SQL.UPDATE;
 import static co.streamx.fluent.SQL.SQL.WHERE;
 import static co.streamx.fluent.SQL.ScalarFunctions.CASE;
 import static co.streamx.fluent.SQL.ScalarFunctions.CURRENT_DATE;
@@ -22,6 +26,9 @@ import java.sql.Timestamp;
 import java.util.Date;
 import java.util.List;
 
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
+import javax.persistence.Embedded;
 import javax.persistence.Entity;
 import javax.persistence.EntityManager;
 import javax.persistence.Id;
@@ -32,6 +39,10 @@ import javax.persistence.Table;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import co.streamx.fluent.SQL.Oracle.Format;
+import co.streamx.fluent.SQL.Oracle.FormatModel;
+import co.streamx.fluent.functions.Function1;
+import co.streamx.fluent.notation.Local;
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
 import lombok.Getter;
@@ -228,5 +239,111 @@ public class StackOverflow implements CommonTest {
         });
 
         return query.createQuery(em, Integer.class).getSingleResult();
+    }
+
+    @Embeddable
+    @Data
+    public static class EmbeddedEntity {
+
+        private String normalString2;
+    }
+
+    @Tuple
+    @Table(name = "ENTITY_A")
+    @Data
+    public static class EntityA {
+
+        @Embedded
+        private EmbeddedEntity embeddedEntity;
+        @Column(name = "NORMAL_STRING")
+        private String normalString;
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/57428383/how-to-update-an-embedded-entity-reference-inside-an-entity-with-jpql
+    public void updateEmbedded() {
+
+        String string1 = null;
+        String string2 = null;
+
+        FluentQuery query = updateEntity(string1, string2);
+
+        String expected = "UPDATE ENTITY_A t0  SET NORMAL_STRING = ?1 " + "normal_string2 = ?2";
+
+        assertQuery(query, expected);
+    }
+
+    private FluentQuery updateEntity(String string1,
+                                     String string2) {
+        FluentQuery query = FluentJPA.SQL((EntityA a) -> {
+            UPDATE(a).SET(() -> {
+                a.setNormalString(string1);
+                a.getEmbeddedEntity().setNormalString2(string2);
+            });
+        });
+
+//        query.createQuery(em).executeUpdate();
+        return query;
+    }
+
+    @Entity
+    @Table(name = "act_resource_t", schema = "sbill")
+    @Data
+    public static class ActResource {
+
+        @Id
+        private int id;
+
+        private int currentBAL;
+        private String createdDT;
+    }
+
+    @Tuple
+    @Data
+    public static class BalanceByDate {
+        private Date date;
+        private int balance;
+    }
+
+
+
+    @Test
+    // https://stackoverflow.com/questions/57429484/common-functions-for-oracle-and-mysql
+    public void commonFunction() {
+
+        FluentQuery query = balanceByDate();
+
+        String expected = "SELECT STR_TO_DATE(t0.created_dt, '%d-%m-%y') AS date, SUM(t0.current_bal) AS balance "
+                + "FROM sbill.act_resource_t t0 " + "GROUP BY  STR_TO_DATE(t0.created_dt, '%d-%m-%y')";
+
+        assertQuery(query, expected);
+    }
+
+    private FluentQuery balanceByDate() {
+        FluentQuery query = FluentJPA.SQL((ActResource e) -> {
+
+            Date createdDate = alias(AS_DATE().apply(e.getCreatedDT()), BalanceByDate::getDate);
+            Integer balance = alias(SUM(e.getCurrentBAL()), BalanceByDate::getBalance);
+
+            SELECT(createdDate, balance);
+            FROM(e);
+            GROUP(BY(createdDate));
+        });
+
+//        query.createQuery(em, BalanceByDate.class).getSingleResult();
+        return query;
+    }
+
+    public static final FormatModel DD_MM_YY = Format.dateModel(Format.DD, Format.MM, Format.YY);
+    public static boolean isOracle() {
+        return false;
+    }
+
+    @Local
+    public static Function1<String, Date> AS_DATE() {
+        if (isOracle())
+            return s -> TO_DATE(s, DD_MM_YY); // oracle
+
+        return s -> STR_TO_DATE(s, "%d-%m-%y"); // mysql
     }
 }
