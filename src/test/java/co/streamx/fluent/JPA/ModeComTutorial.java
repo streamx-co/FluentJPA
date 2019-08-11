@@ -21,6 +21,7 @@ import static co.streamx.fluent.SQL.SQL.ORDER;
 import static co.streamx.fluent.SQL.SQL.PARTITION;
 import static co.streamx.fluent.SQL.SQL.SELECT;
 import static co.streamx.fluent.SQL.SQL.WHERE;
+import static co.streamx.fluent.SQL.ScalarFunctions.BOTH;
 import static co.streamx.fluent.SQL.ScalarFunctions.LEFT;
 import static co.streamx.fluent.SQL.ScalarFunctions.RIGHT;
 import static co.streamx.fluent.SQL.ScalarFunctions.TRIM;
@@ -117,12 +118,12 @@ public class ModeComTutorial implements CommonTest, ModeComTutorialTypes {
     public void testStringTrim() throws Exception {
         FluentQuery query = FluentJPA.SQL((CrimeIncidents2014_01 ci) -> {
 
-            SELECT(ci.getLocation(), TRIM("()", ci.getLocation()), POSITION("A", ci.getDescript()));
+            SELECT(ci.getLocation(), TRIM(BOTH("()").FROM(ci.getLocation())), POSITION("A", ci.getDescript()));
             FROM(ci);
 
         });
 
-        String expected = "SELECT t0.location, TRIM('()' FROM t0.location), POSITION('A' IN t0.descript) "
+        String expected = "SELECT t0.location, TRIM(BOTH '()' FROM t0.location), POSITION('A' IN t0.descript) "
                 + "FROM tutorial.sf_crime_incidents_2014_01 t0";
 
         assertQuery(query, expected);
