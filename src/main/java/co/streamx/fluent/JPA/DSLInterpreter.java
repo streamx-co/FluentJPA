@@ -1,6 +1,7 @@
 package co.streamx.fluent.JPA;
 
 import static co.streamx.fluent.JPA.JPAHelpers.getAssociation;
+import static co.streamx.fluent.JPA.JPAHelpers.getAssociationMTM;
 import static co.streamx.fluent.JPA.JPAHelpers.getColumnNameFromProperty;
 import static co.streamx.fluent.JPA.JPAHelpers.getJoinTableName;
 import static co.streamx.fluent.JPA.JPAHelpers.getTableName;
@@ -93,8 +94,8 @@ final class DSLInterpreter
     private Expression argumentsTarget; // used to differentiate invocation vs. reference
 
     // join table
-    private Map<ParameterExpression, String> joinTables = Collections.emptyMap();
-    private Map<CharSequence, String> joinTablesForFROM = Collections.emptyMap();
+    private Map<ParameterExpression, Member> joinTables = Collections.emptyMap();
+    private Map<CharSequence, Member> joinTablesForFROM = Collections.emptyMap();
 
     @Getter
     private List<Object> indexedParameters = new ArrayList<>();
@@ -698,7 +699,8 @@ final class DSLInterpreter
             }
 
             Member tableJoinMember;
-            if (m.isAnnotationPresent(TableJoin.class)) {
+            TableJoin tableJoin = m.getAnnotation(TableJoin.class);
+            if (tableJoin != null && !tableJoin.property()) {
 
                 if (!(ei instanceof ParameterExpression)) {
                     throw TranslationError.INSTANCE_NOT_JOINTABLE.getError(ei);
@@ -727,7 +729,7 @@ final class DSLInterpreter
 
                 tableJoinMember = ((MemberExpression) target).getMember();
 
-                joinTables.computeIfAbsent((ParameterExpression) actual, key -> getJoinTableName(tableJoinMember));
+                joinTables.computeIfAbsent((ParameterExpression) actual, key -> tableJoinMember);
             }
             else {
                 tableJoinMember = null;
@@ -821,11 +823,19 @@ final class DSLInterpreter
                     // the table definition must come from JOIN clause
                     CharSequence inst = instance.apply(ipp);
 
-                    if (m.isAnnotationPresent(TableJoin.class)) {
+                    if (tableJoin != null) {
                         CharSequence lseq = inst;
                         return pp -> {
-                            Association association = getAssociation(tableJoinMember);
-                            return renderAssociation(out, association, aliases, lseq, pp.get(0));
+                            if (tableJoin.property()) {
+                                Member member = joinTablesForFROM.get(lseq);
+                                Association association = getAssociationMTM(member, tableJoin.inverse());
+                                return new IdentifierPath.MultiColumnIdentifierPath(m.getName(), association)
+                                        .resolveInstance(lseq);
+                            } else {
+                                Association association = getAssociationMTM(tableJoinMember, tableJoin.inverse());
+                                return renderAssociation(out, association, aliases, lseq,
+                                        tableJoin.inverse() ? pp.get(1) : pp.get(0));
+                            }
                         };
                     }
 
@@ -1043,8 +1053,8 @@ final class DSLInterpreter
 
     private CharSequence resolveTableName(CharSequence seq,
                                        Class<?> resultType) {
-        String joinTable = joinTablesForFROM.get(seq);
-        return joinTable != null ? joinTable : getTableName(resultType);
+        Member joinTable = joinTablesForFROM.get(seq);
+        return joinTable != null ? getJoinTableName(joinTable) : getTableName(resultType);
     }
 
     private CharSequence handleFromClause(CharSequence seq,
@@ -1169,7 +1179,7 @@ final class DSLInterpreter
 
     private CharSequence registerJoinTable(CharSequence seq,
                                            ParameterExpression e) {
-        String joinTable = joinTables.get(e);
+        Member joinTable = joinTables.get(e);
         if (joinTable != null)
             joinTablesForFROM.put(seq, joinTable);
         return seq;

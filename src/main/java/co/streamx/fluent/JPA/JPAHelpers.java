@@ -264,21 +264,26 @@ final class JPAHelpers {
         throw new IllegalStateException("association was not resolved for " + field + ".");
     }
 
-    public static Association getAssociation(Member field) {
+    public static Association getAssociationMTM(Member field,
+                                                boolean inverse) {
         field = getAnnotatedField(field);
         AnnotatedElement leftField = (AnnotatedElement) field;
-        boolean left = true;
 
         ManyToMany manyToMany = leftField.getAnnotation(ManyToMany.class);
         if (manyToMany != null) {
 
-            Class<?> declaringClass = field.getDeclaringClass();
             String mappedBy = manyToMany.mappedBy();
 
+            Class<?> declaringClass = field.getDeclaringClass();
             if (mappedBy.length() > 0) {
                 field = resolveMappedBy(getTargetForMTM(field), mappedBy);
                 leftField = (AnnotatedElement) field;
-                left = false;
+                inverse = !inverse;
+            }
+            else if (inverse) {
+                declaringClass = manyToMany.targetEntity();
+                if (declaringClass == void.class)
+                    declaringClass = getTargetByParameterizedType((Field) field);
             }
 
             List<CharSequence> entity = Streams.map(getClassMeta(declaringClass).getIds(), ID::getColumn);
@@ -286,7 +291,7 @@ final class JPAHelpers {
 
             JoinTable joinTable = leftField.getAnnotation(JoinTable.class);
             if (joinTable != null) {
-                JoinColumn[] columns = left ? joinTable.joinColumns() : joinTable.inverseJoinColumns();
+                JoinColumn[] columns = inverse ? joinTable.inverseJoinColumns() : joinTable.joinColumns();
                 if (columns != null) {
                     join = new ArrayList<>();
                     for (int i = 0; i < columns.length; i++) {
