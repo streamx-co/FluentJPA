@@ -12,6 +12,8 @@ enum TranslationError {
             "Parameter method accepts external parameters only, as an object. "
                     + "Calculations and expressions must be performed out of Lambda. Received: {0}"),
     UNSUPPORTED_EXPRESSION_TYPE("Unsupported operator: {0}"),
+    INSTANCE_NOT_JOINTABLE("Not a JoinTable instance: {0}"),
+    NOT_PROPERTY_CALL("Must pass a getter call: {0}"),
     UNMAPPED_FIELD(
             "Cannot translate property: {0}. FluentJPA methods must be either static, interface default or annotated with @Local") {
         @Override

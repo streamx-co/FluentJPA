@@ -1,10 +1,13 @@
 package co.streamx.fluent.JPA;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -12,6 +15,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import javax.persistence.AccessType;
@@ -24,6 +28,7 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinColumns;
+import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.MapsId;
@@ -256,10 +261,52 @@ final class JPAHelpers {
             return getAssociation(field, targetEntity, mappedBy, left);
         }
 
-        ManyToMany leftManyToMany = leftField.getAnnotation(ManyToMany.class);
+        throw new IllegalStateException("association was not resolved for " + field + ".");
+    }
 
-        throw new IllegalStateException(
-                "association was not resolved for " + field + ". Do you have an EmbeddedId? (Not yet supported)");
+    public static Association getAssociation(Member field) {
+        field = getAnnotatedField(field);
+        AnnotatedElement leftField = (AnnotatedElement) field;
+        boolean left = true;
+
+        ManyToMany manyToMany = leftField.getAnnotation(ManyToMany.class);
+        if (manyToMany != null) {
+
+            Class<?> declaringClass = field.getDeclaringClass();
+            String mappedBy = manyToMany.mappedBy();
+
+            if (mappedBy.length() > 0) {
+                field = resolveMappedBy(getTargetForMTM(field), mappedBy);
+                leftField = (AnnotatedElement) field;
+                left = false;
+            }
+
+            List<CharSequence> entity = Streams.map(getClassMeta(declaringClass).getIds(), ID::getColumn);
+            List<CharSequence> join;
+
+            JoinTable joinTable = leftField.getAnnotation(JoinTable.class);
+            if (joinTable != null) {
+                JoinColumn[] columns = left ? joinTable.joinColumns() : joinTable.inverseJoinColumns();
+                if (columns != null) {
+                    join = new ArrayList<>();
+                    for (int i = 0; i < columns.length; i++) {
+                        JoinColumn column = columns[i];
+                        String referencedColumnName = column.referencedColumnName();
+                        join.add(Strings.isNullOrEmpty(referencedColumnName)
+                                ? concatWithUnderscore(getTableName(declaringClass), entity.get(i))
+                                : referencedColumnName);
+                    }
+                } else {
+                    join = entity;
+                }
+            } else {
+                join = entity;
+            }
+
+            return new Association(join, entity, true);
+        }
+
+        throw new IllegalStateException("association was not resolved for " + field + ".");
     }
 
     private static Association getAssociation(Member field,
@@ -302,7 +349,7 @@ final class JPAHelpers {
                     if (!Strings.isNullOrEmpty(join.name()))
                         that.add(join.name());
                     else {
-                        that.add(getColumnName(field) + "_" + other.get(other.size() - 1));
+                        that.add(concatWithUnderscore(getColumnName(field), other.get(other.size() - 1)));
                     }
 
                 }
@@ -322,7 +369,7 @@ final class JPAHelpers {
                 }
 
                 other = Streams.map(getClassMeta(type).getIds(), ID::getColumn);
-                that = Collections.singletonList(getColumnName(field) + "_" + other.get(0));
+                that = Collections.singletonList(concatWithUnderscore(getColumnName(field), other.get(0)));
             }
 
             return new Association(that, other, left);
@@ -422,7 +469,7 @@ final class JPAHelpers {
         return entity.getAnnotation(Embeddable.class) != null;
     }
 
-    public static IdentifierPath getColumnName(Member field) {
+    private static IdentifierPath getColumnName(Member field) {
         Column column = ((AnnotatedElement) field).getAnnotation(Column.class);
         if (column != null) {
             String cname = column.name();
@@ -465,7 +512,7 @@ final class JPAHelpers {
         return ids.computeIfAbsent(declaringClass, JPAHelpers::findId);
     }
 
-    public static Field getField(Method m) {
+    public static Field getField(Member m) {
 
         String original = m.getName();
 
@@ -497,11 +544,81 @@ final class JPAHelpers {
         return name;
     }
 
-    public static IdentifierPath getColumnNameFromProperty(Method member) {
+    public static IdentifierPath getColumnNameFromProperty(Member member) {
         return getColumnName(getAnnotatedField(member));
     }
 
-    public static Member getAnnotatedField(Method member) {
+    public static <T extends Annotation> T getAnnotationFromProperty(Member member,
+                                                                     Class<T> annotationClass) {
+        AnnotatedElement annotated = (AnnotatedElement) getAnnotatedField(member);
+        return annotated.getAnnotation(annotationClass);
+    }
+
+    public static String getJoinTableName(Member member) {
+
+        Member field = getAnnotatedField(member);
+        AnnotatedElement annotated = (AnnotatedElement) field;
+        ManyToMany mtm = annotated.getAnnotation(ManyToMany.class);
+
+        String mappedBy = mtm.mappedBy();
+
+        if (mappedBy.length() > 0) {
+            field = resolveMappedBy(getTargetForMTM(field), mappedBy);
+            annotated = (AnnotatedElement) field;
+        }
+
+        String name = "", catalog = "", schema = "";
+
+        JoinTable joinTable = annotated.getAnnotation(JoinTable.class);
+
+        if (joinTable != null) {
+            name = joinTable.name();
+            catalog = joinTable.catalog();
+            schema = joinTable.schema();
+        }
+
+        Member f = field;
+        Supplier<Class<?>> targetSupplier = () -> getTargetForMTM(f);
+        return getJoinTableName(field, name, catalog, schema, targetSupplier);
+    }
+
+    private static Class<?> getTargetForMTM(Member field) {
+
+        AnnotatedElement annotated = (AnnotatedElement) field;
+        ManyToMany mtm = annotated.getAnnotation(ManyToMany.class);
+
+        Class<?> target = mtm.targetEntity();
+        if (target == void.class)
+            target = getTargetByParameterizedType((Field) field);
+
+        return target;
+    }
+
+    private static String getJoinTableName(Member field,
+                                           String name,
+                                           String catalog,
+                                           String schema,
+                                           Supplier<Class<?>> target) {
+        if (Strings.isNullOrEmpty(name)) {
+            String first = getTableName(field.getDeclaringClass());
+            name = concatWithUnderscore(first, getTableName(target.get()));
+        }
+
+        return buildFullTableName(catalog, schema, name);
+    }
+
+    private static Class<?> getTargetByParameterizedType(Field field) {
+        ParameterizedType genericType = (ParameterizedType) field.getGenericType();
+        Type[] types = genericType.getActualTypeArguments();
+        return (Class<?>) types[0];
+    }
+
+    private static String concatWithUnderscore(CharSequence first,
+                                               CharSequence second) {
+        return first + "_" + second;
+    }
+
+    public static Member getAnnotatedField(Member member) {
         return getAccessType(member.getDeclaringClass()) == AccessType.PROPERTY ? member : getField(member);
     }
 

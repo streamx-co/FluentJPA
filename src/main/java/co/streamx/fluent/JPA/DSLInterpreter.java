@@ -2,6 +2,7 @@ package co.streamx.fluent.JPA;
 
 import static co.streamx.fluent.JPA.JPAHelpers.getAssociation;
 import static co.streamx.fluent.JPA.JPAHelpers.getColumnNameFromProperty;
+import static co.streamx.fluent.JPA.JPAHelpers.getJoinTableName;
 import static co.streamx.fluent.JPA.JPAHelpers.getTableName;
 import static co.streamx.fluent.JPA.JPAHelpers.isCollection;
 import static co.streamx.fluent.JPA.JPAHelpers.isEmbeddable;
@@ -10,10 +11,12 @@ import static co.streamx.fluent.JPA.JPAHelpers.isScalar;
 import static co.streamx.fluent.JPA.JPAHelpers.wrap;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -50,6 +53,7 @@ import co.streamx.fluent.notation.Operator;
 import co.streamx.fluent.notation.Parameter;
 import co.streamx.fluent.notation.ParameterContext;
 import co.streamx.fluent.notation.SubQuery;
+import co.streamx.fluent.notation.TableJoin;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +62,7 @@ import lombok.RequiredArgsConstructor;
 final class DSLInterpreter
         implements ExpressionVisitor<Function<List<Expression>, Function<List<CharSequence>, CharSequence>>> {
 
+    private static final Optional<Boolean> OPTIONAL_FALSE = Optional.of(false);
     private static final char UNDERSCORE_CHAR = '_';
     private static final char COMMA_CHAR = ',';
     private static final String AS = "AS";
@@ -87,11 +92,15 @@ final class DSLInterpreter
     private List<CharSequence> undeclaredAliases = Collections.emptyList();
     private Expression argumentsTarget; // used to differentiate invocation vs. reference
 
+    // join table
+    private Map<ParameterExpression, String> joinTables = Collections.emptyMap();
+    private Map<CharSequence, String> joinTablesForFROM = Collections.emptyMap();
+
     @Getter
     private List<Object> indexedParameters = new ArrayList<>();
 
     private ParameterContext renderingContext = ParameterContext.EXPRESSION;
-    private Optional<Boolean> collectingParameters = Optional.of(false);
+    private Optional<Boolean> collectingParameters = OPTIONAL_FALSE;
 
     private int parameterCounter;
     private int subQueriesCounter;
@@ -174,26 +183,7 @@ final class DSLInterpreter
                     CharSequence rseq = right.apply(args);
                     if (assoc != null) {
                         renderingAssociation = false;
-                        StringBuilder out = new StringBuilder().append(LEFT_PARAN);
-
-                        for (int i = 0; i < assoc.getCardinality(); i++) {
-                            if (out.length() > 1)
-                                out.append(KEYWORD_DELIMITER + AND + KEYWORD_DELIMITER);
-
-                            if (IdentifierPath.isResolved(lseq))
-                                out.append(lseq);
-                            else
-                                out.append(resolveLabel(aliases, lseq)).append(DOT).append(assoc.getLeft().get(i));
-
-                            out.append(KEYWORD_DELIMITER + EQUAL_SIGN + KEYWORD_DELIMITER);
-
-                            if (IdentifierPath.isResolved(rseq))
-                                out.append(rseq);
-                            else
-                                out.append(resolveLabel(aliases, rseq)).append(DOT).append(assoc.getRight().get(i));
-                        }
-
-                        return out.append(RIGHT_PARAN);
+                        return renderAssociation(new StringBuilder(), assoc, aliases, lseq, rseq);
                     }
                     return renderBinaryOperator(lseq, EQUAL_SIGN, rseq);
                 };
@@ -227,6 +217,33 @@ final class DSLInterpreter
                                 .getError(getOperatorSign(e.getExpressionType())));
             }
         };
+    }
+
+    private StringBuilder renderAssociation(StringBuilder out,
+                                   Association assoc,
+                                   Map<CharSequence, CharSequence> aliases,
+                                   CharSequence lseq,
+                                   CharSequence rseq) {
+        out.append(LEFT_PARAN);
+
+        for (int i = 0; i < assoc.getCardinality(); i++) {
+            if (out.length() > 1)
+                out.append(KEYWORD_DELIMITER + AND + KEYWORD_DELIMITER);
+
+            if (IdentifierPath.isResolved(lseq))
+                out.append(lseq);
+            else
+                out.append(resolveLabel(aliases, lseq)).append(DOT).append(assoc.getLeft().get(i));
+
+            out.append(KEYWORD_DELIMITER + EQUAL_SIGN + KEYWORD_DELIMITER);
+
+            if (IdentifierPath.isResolved(rseq))
+                out.append(rseq);
+            else
+                out.append(resolveLabel(aliases, rseq)).append(DOT).append(assoc.getRight().get(i));
+        }
+
+        return out.append(RIGHT_PARAN);
     }
 
     private static String getOperatorSign(int expressionType) {
@@ -680,6 +697,42 @@ final class DSLInterpreter
                 };
             }
 
+            Member tableJoinMember;
+            if (m.isAnnotationPresent(TableJoin.class)) {
+
+                if (!(ei instanceof ParameterExpression)) {
+                    throw TranslationError.INSTANCE_NOT_JOINTABLE.getError(ei);
+                }
+
+                Expression actual = instanceArguments.get(((ParameterExpression) ei).getIndex());
+
+                if (!(actual instanceof ParameterExpression)) {
+                    throw TranslationError.INSTANCE_NOT_JOINTABLE.getError(ei);
+                }
+
+                if (joinTables.isEmpty()) {
+                    joinTables = new HashMap<>();
+                    joinTablesForFROM = new HashMap<>();
+                }
+
+                Expression arg = invocationArguments.get(0);
+                if (!(arg instanceof InvocationExpression)) {
+                    throw TranslationError.NOT_PROPERTY_CALL.getError(arg);
+                }
+
+                InvocableExpression target = ((InvocationExpression) arg).getTarget();
+                if (!(target instanceof MemberExpression)) {
+                    throw TranslationError.NOT_PROPERTY_CALL.getError(target);
+                }
+
+                tableJoinMember = ((MemberExpression) target).getMember();
+
+                joinTables.computeIfAbsent((ParameterExpression) actual, key -> getJoinTableName(tableJoinMember));
+            }
+            else {
+                tableJoinMember = null;
+            }
+
             SubQueryManager subQueries = getSubQueries();
             Map<CharSequence, CharSequence> aliases = getAliases();
 
@@ -767,6 +820,14 @@ final class DSLInterpreter
                 if (instance != null) {
                     // the table definition must come from JOIN clause
                     CharSequence inst = instance.apply(ipp);
+
+                    if (m.isAnnotationPresent(TableJoin.class)) {
+                        CharSequence lseq = inst;
+                        return pp -> {
+                            Association association = getAssociation(tableJoinMember);
+                            return renderAssociation(out, association, aliases, lseq, pp.get(0));
+                        };
+                    }
 
                     inst = resolveLabel(aliases, inst);
 
@@ -980,6 +1041,12 @@ final class DSLInterpreter
         };
     }
 
+    private CharSequence resolveTableName(CharSequence seq,
+                                       Class<?> resultType) {
+        String joinTable = joinTablesForFROM.get(seq);
+        return joinTable != null ? joinTable : getTableName(resultType);
+    }
+
     private CharSequence handleFromClause(CharSequence seq,
                                           Expression e,
                                           Map<CharSequence, CharSequence> aliases,
@@ -1010,7 +1077,7 @@ final class DSLInterpreter
             return label;
         }
 
-        CharSequence tableName = getTableName(resultType);
+        CharSequence tableName = resolveTableName(seq, resultType);
         if (hasLabel && tableName == null)
             tableName = seq instanceof RequiresParenthesesInAS
                     ? new StringBuilder(LEFT_PARAN).append(((RequiresParenthesesInAS) seq).getWrapped())
@@ -1087,7 +1154,7 @@ final class DSLInterpreter
                     Class<?> resultType = e.getResultType();
                     if (!isEntityLike(resultType))
                         throw TranslationError.CANNOT_CALCULATE_TABLE_REFERENCE.getError(resultType);
-                    return new StringBuilder(TABLE_ALIAS_PREFIX).append(parameterCounter++);
+                    return registerJoinTable(new StringBuilder(TABLE_ALIAS_PREFIX).append(parameterCounter++), e);
                 }
 
                 CharSequence value = t.get(index);
@@ -1095,9 +1162,17 @@ final class DSLInterpreter
                 if (parameterRefs.contains(value))
                     return new StringBuilder().append(QUESTION_MARK_CHAR).append(value);
 
-                return value;
+                return registerJoinTable(value, e);
             };
         };
+    }
+
+    private CharSequence registerJoinTable(CharSequence seq,
+                                           ParameterExpression e) {
+        String joinTable = joinTables.get(e);
+        if (joinTable != null)
+            joinTablesForFROM.put(seq, joinTable);
+        return seq;
     }
 
     @Override
