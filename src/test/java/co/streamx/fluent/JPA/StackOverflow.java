@@ -13,6 +13,7 @@ import static co.streamx.fluent.SQL.Operators.lessEqual;
 import static co.streamx.fluent.SQL.Oracle.SQL.TO_DATE;
 import static co.streamx.fluent.SQL.Oracle.SQL.registerVendorCapabilities;
 import static co.streamx.fluent.SQL.SQL.BY;
+import static co.streamx.fluent.SQL.SQL.DISTINCT;
 import static co.streamx.fluent.SQL.SQL.FROM;
 import static co.streamx.fluent.SQL.SQL.GROUP;
 import static co.streamx.fluent.SQL.SQL.PARTITION;
@@ -24,9 +25,11 @@ import static co.streamx.fluent.SQL.ScalarFunctions.CURRENT_DATE;
 import static co.streamx.fluent.SQL.ScalarFunctions.WHEN;
 
 import java.sql.Timestamp;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
 import javax.persistence.Embedded;
@@ -35,6 +38,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -346,5 +350,60 @@ public class StackOverflow implements CommonTest {
             return s -> TO_DATE(s, DD_MM_YY); // oracle
 
         return s -> STR_TO_DATE(s, "%d-%m-%y"); // mysql
+    }
+
+    @Entity
+    @Data
+    public class Widget {
+        @Id
+        private int id;
+
+        @OneToMany(cascade = CascadeType.ALL, mappedBy = "widget")
+        private List<Tag> tagList;
+    }
+
+    @Entity
+    @Data
+    public class Tag {
+        @Id
+        private int id;
+
+        private String tagValue;
+
+        @ManyToOne
+        private Widget widget;
+
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/57452245/jpa-criteria-query-match-any-of-list-passed-as-parameter/
+    public void matchAny() {
+
+        String[] args = { "tag1", "tag2", "tag3" };
+        List<String> tags = Arrays.asList(args);
+
+        Function1<Tag, Boolean> dynamicFilter = buildAnd(tags);
+
+        FluentQuery query = FluentJPA.SQL((Widget w,
+                                           Tag tag) -> {
+
+            SELECT(DISTINCT(w));
+            FROM(w).JOIN(tag).ON(tag.getWidget() == w);
+            WHERE(dynamicFilter.apply(tag));
+        });
+
+        String expected = "SELECT DISTINCT t0.*  " + "FROM Widget t0  INNER JOIN Tag t1  ON (t1.widget_id = t0.id) "
+                + "WHERE (((t1.tag_value = ?1) AND (t1.tag_value = ?2)) AND (t1.tag_value = ?3))";
+
+        assertQuery(query, expected, args);
+    }
+
+    private Function1<Tag, Boolean> buildAnd(List<String> tags) {
+        Function1<Tag, Boolean> criteria = Function1.TRUE();
+
+        for (String tag : tags)
+            criteria = criteria.and(p -> p.getTagValue() == parameter(tag));
+
+        return criteria;
     }
 }
