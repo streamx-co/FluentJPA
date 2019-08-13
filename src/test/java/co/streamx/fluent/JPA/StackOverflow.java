@@ -7,6 +7,7 @@ import static co.streamx.fluent.SQL.Directives.alias;
 import static co.streamx.fluent.SQL.Directives.parameter;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Library.pick;
+import static co.streamx.fluent.SQL.MySQL.SQL.GROUP_CONCAT;
 import static co.streamx.fluent.SQL.MySQL.SQL.STR_TO_DATE;
 import static co.streamx.fluent.SQL.Operators.BETWEEN;
 import static co.streamx.fluent.SQL.Operators.lessEqual;
@@ -405,5 +406,69 @@ public class StackOverflow implements CommonTest {
             criteria = criteria.and(p -> p.getTagValue() == parameter(tag));
 
         return criteria;
+    }
+
+    @Entity
+    @Data // lombok
+    @Table(name = "profile")
+    public class Profile {
+        @Id
+        private int id;
+
+        private String description;
+    }
+
+    @Entity
+    @Data // lombok
+    @Table(name = "profile_menu")
+    public class ProfileMenu {
+        @Id
+        private int id;
+
+        @ManyToOne
+        @JoinColumn(name = "profile_id")
+        private Profile profile;
+
+        private int userMenuId;
+
+        private String status;
+    }
+
+    @Tuple
+    @Data // lombok
+    public class ProfileMenuGroup {
+
+        private String profileMenuIds;
+
+        private String description;
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/57393539/is-there-an-alternative-for-native-querys-group-concat-in-jpql-with-jpa
+    public void GROUP_CONCAT1() {
+
+        int profileId = 4;
+
+        FluentQuery query = getMenuIdsByProfile(profileId);
+
+        String expected = "SELECT GROUP_CONCAT(t1.user_menu_id SEPARATOR ',') AS profile_menu_ids, t0.description AS description "
+                + "FROM profile t0  LEFT JOIN profile_menu t1  ON (t0.id = t1.profile_id) "
+                + "WHERE ((t0.id = ?1) AND (t1.status = 'Y')) " + "GROUP BY  t0.id";
+
+        assertQuery(query, expected);
+    }
+
+    private FluentQuery getMenuIdsByProfile(int profileId) {
+        FluentQuery query = FluentJPA.SQL((Profile p,
+                                           ProfileMenu pm) -> {
+            String menuIds = alias(GROUP_CONCAT(pm.getUserMenuId(), ","), ProfileMenuGroup::getProfileMenuIds);
+            String description = alias(p.getDescription(), ProfileMenuGroup::getDescription);
+
+            SELECT(menuIds, description);
+            FROM(p).LEFT_JOIN(pm).ON(p == pm.getProfile());
+            WHERE(p.getId() == profileId && pm.getStatus() == "Y");
+            GROUP(BY(p.getId()));
+        });
+        return query;// .createQuery(em, ProfileMenuGroup.class).getSingleResult();
     }
 }
