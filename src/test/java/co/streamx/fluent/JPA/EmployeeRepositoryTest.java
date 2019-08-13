@@ -117,5 +117,11 @@ public class EmployeeRepositoryTest extends IntegrationTest {
         assertNotNull(foundCourses);
         assertEquals(1, foundCourses.size());
         assertEquals(2, foundCourses.get(0).getLikes().size());
+
+        int nStudents = courseRepository.countStudents("c1");
+        assertEquals(2, nStudents);
+
+        nStudents = courseRepository.countStudents1("c1");
+        assertEquals(2, nStudents);
     }
 }

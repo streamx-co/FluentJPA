@@ -96,6 +96,7 @@ final class DSLInterpreter
     // join table
     private Map<ParameterExpression, Member> joinTables = Collections.emptyMap();
     private Map<CharSequence, Member> joinTablesForFROM = Collections.emptyMap();
+    private Map<ParameterExpression, ParameterExpression> parameterBackwardMap = new HashMap<>();
 
     @Getter
     private List<Object> indexedParameters = new ArrayList<>();
@@ -448,13 +449,14 @@ final class DSLInterpreter
     }
 
 
-    private static List<Expression> prepareLambdaParameters(List<ParameterExpression> declared,
+    private List<Expression> prepareLambdaParameters(List<ParameterExpression> declared,
                                                             List<Expression> arguments) {
         List<Expression> result = new ArrayList<>(declared);
         for (int i = 0; i < arguments.size(); i++) {
             if (i >= declared.size())
                 break;
-            Expression arg = arguments.get(i);
+            Expression original = arguments.get(i);
+            Expression arg = original;
             while (arg instanceof UnaryExpression)
                 arg = ((UnaryExpression) arg).getFirst();
 
@@ -464,10 +466,13 @@ final class DSLInterpreter
             // don't forward anything except LambdaExpression
             if (arg instanceof ConstantExpression) {
                 if (!(((ConstantExpression) arg).getValue() instanceof LambdaExpression))
-                    arg = Expression.parameter(arguments.get(i).getResultType(), i);
+                    arg = Expression.parameter(original.getResultType(), i);
 
             } else if (!(arg instanceof LambdaExpression)) {
-                arg = Expression.parameter(arguments.get(i).getResultType(), i);
+                ParameterExpression newParam = Expression.parameter(original.getResultType(), i);
+                if (arg instanceof ParameterExpression)
+                    parameterBackwardMap.put(newParam, (ParameterExpression) arg);
+                arg = newParam;
             }
 
             result.set(i, arg);
@@ -712,6 +717,8 @@ final class DSLInterpreter
                     throw TranslationError.INSTANCE_NOT_JOINTABLE.getError(ei);
                 }
 
+                ParameterExpression actualParam = (ParameterExpression) actual;
+
                 if (joinTables.isEmpty()) {
                     joinTables = new HashMap<>();
                     joinTablesForFROM = new HashMap<>();
@@ -729,7 +736,10 @@ final class DSLInterpreter
 
                 tableJoinMember = ((MemberExpression) target).getMember();
 
-                joinTables.computeIfAbsent((ParameterExpression) actual, key -> tableJoinMember);
+                while (actualParam != null) {
+                    joinTables.put(actualParam, tableJoinMember);
+                    actualParam = parameterBackwardMap.get(actualParam);
+                }
             }
             else {
                 tableJoinMember = null;

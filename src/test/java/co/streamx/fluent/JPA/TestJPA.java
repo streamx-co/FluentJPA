@@ -19,11 +19,14 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import co.streamx.fluent.JPA.repository.entities.Company;
+import co.streamx.fluent.JPA.repository.entities.Course;
 import co.streamx.fluent.JPA.repository.entities.Employee;
 import co.streamx.fluent.JPA.repository.entities.NetworkObject;
 import co.streamx.fluent.JPA.repository.entities.NetworkObjectRange;
 import co.streamx.fluent.JPA.repository.entities.ObjectContainer;
 import co.streamx.fluent.JPA.repository.entities.Person;
+import co.streamx.fluent.JPA.repository.entities.Student;
+import co.streamx.fluent.SQL.JoinTable;
 import co.streamx.fluent.SQL.LockStrength;
 
 public class TestJPA implements CommonTest {
@@ -219,5 +222,30 @@ public class TestJPA implements CommonTest {
 
     private String getName() {
         return "gggg";
+    }
+
+    @Test
+    public void MTM1() throws Exception {
+
+        String name = "c1";
+
+        FluentQuery query = FluentJPA.SQL((Course course,
+                       Student student,
+                       JoinTable<Student, Course> coursesToStudents) -> {
+
+            SELECT(COUNT(coursesToStudents.getJoined().getId()));
+            FROM(course).JOIN(coursesToStudents)
+                    .ON(coursesToStudents.joinBy(course.getLikes()))
+                    .JOIN(student)
+                    .ON(coursesToStudents.joinBy(student.getLikedCourses()));
+
+            WHERE(course.getName() == name);
+
+        });
+
+        String expected = "SELECT COUNT(t2.COURSE_id) "
+                + "FROM COURSE AS t0  INNER JOIN course_like AS t2  ON (t2.COURSE_id = t0.id)  INNER JOIN STUDENT AS t1  ON (t2.STUDENT_id = t1.id) "
+                + "WHERE (t0.name = ?1)";
+        assertQuery(query, expected, new Object[] { name });
     }
 }
