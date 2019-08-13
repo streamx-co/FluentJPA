@@ -4,10 +4,11 @@
 
 JPA is a great technology that maps the database relational model to the Java object oriented model. It lets retrieve data and persist back the changes very easily. But it lacks the ability to perform advanced queries. In fact, all the advanced SQL capabilities are simply locked to the Java developer until she chooses to write a hard-to-maintain SQL as a hard-coded string.
 
-FluentJPA fills this gap in two ways:
+FluentJPA fills this gap in three ways:
 
 * lets write native SQL in **Java**!
 And by saying Java, we **mean** Java. There is no DSL or semantic gap. You use `+` for addition and `-` for subtraction. You use getter to get a property value and setter to set it. You use functions and variables, so when you call SQL `SELECT`, you call it like any other library method. And when you need a sub query, you will probably prefer to put it in a separate function ... as you usually do when you code rest of your business logic. To accomplish this, FluentJPA reads the Java Byte Code from the .class files in runtime and translates it all the way to SQL.
+* covers the entire SQL [DML](https://en.wikipedia.org/wiki/Data_manipulation_language) standard. [A Lot Has Changed Since SQL-92](https://modern-sql.com). FluentJPA brings this power as a handy Java library.
 * naturally extends the JPA model. Once you mapped your entities, forget about mapping. Use JPA entity getters and setters to write expressions and joins, store intermediate calculations in variables, pass them to methods - we seamlessly translate it to SQL.
 
 There is no bootstrap, code generation step or anything else needed to use FluentJPA. Add [dependencies](https://github.com/streamx-co/FluentJPA/wiki/Setup) to your project build system and unlock the full power of type-safe Object Oriented SQL in your JPA project without compromises!
