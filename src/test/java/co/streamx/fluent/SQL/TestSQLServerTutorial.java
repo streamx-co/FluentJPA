@@ -92,7 +92,7 @@ public class TestSQLServerTutorial implements CommonTest {
                                            OrderItem oi) -> {
             SELECT(p.getName(), oi.getOrder().getId());
             FROM(p).LEFT_JOIN(oi).ON(oi.getProduct() == p);
-            ORDER(BY(oi.getOrder()));
+            ORDER(BY(oi.getOrder().getId()));
         });
 
         String expected = "SELECT t0.product_name, t1.order_id "
@@ -196,7 +196,7 @@ public class TestSQLServerTutorial implements CommonTest {
 
             SELECT(i.getOrder().getId(), netValue);
             FROM(i);
-            GROUP(BY(i.getOrder()));
+            GROUP(BY(i.getOrder().getId()));
             HAVING(netValue > 20000);
             ORDER(BY(netValue));
         });
@@ -238,7 +238,7 @@ public class TestSQLServerTutorial implements CommonTest {
             double avgListPrice = subQuery((Product p1) -> {
                 SELECT(AVG(p1.getListPrice()));
                 FROM(p1);
-                GROUP(BY(p1.getBrand()));
+                GROUP(BY(p1.getBrand().getId()));
             });
 
             WHERE(listPrice >= ANY(avgListPrice));

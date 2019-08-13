@@ -155,7 +155,7 @@ public class testSELECT implements CommonTest {
 
             SELECT(p1.getModel());
             FROM(p1);
-            GROUP(BY(p1.getModel()));
+            GROUP(BY(p1.getModel().getId()));
             HAVING(MAX(p1.getListPrice()) >= ALL(avgPriceForProductModel(p1.getModel())));
 
         });

@@ -50,7 +50,7 @@ public interface NetworkObjectRepo extends JpaRepository<NetworkObject, Long>, E
     static Long aggregateWindow(NetworkObjectRange netRange,
                        long agg) {
         return aggregateBy(agg)
-                .OVER(PARTITION(BY(netRange.getNetworkObject()))
+                .OVER(PARTITION(BY(netRange.getNetworkObject().getId()))
                         .ORDER(BY(netRange.getFirst()), BY(netRange.getLast())))
                 .AS();
     }
@@ -95,7 +95,7 @@ public interface NetworkObjectRepo extends JpaRepository<NetworkObject, Long>, E
             NetworkObjectRange netObjectRange = subQuery(() -> {
                 SELECT(s3);
                 FROM(s3);
-                GROUP(BY(s3.getNetworkObject()), BY(s3.getParam()));
+                GROUP(BY(s3.getNetworkObject().getId()), BY(s3.getParam()));
                 HAVING(MIN(s3.getFirst()) <= minRange && MAX(s3.getLast()) >= maxRange);
             });
 
