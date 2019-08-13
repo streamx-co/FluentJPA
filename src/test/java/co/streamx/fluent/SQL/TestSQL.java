@@ -230,7 +230,7 @@ public class TestSQL implements CommonTest {
             NetworkObjectRangeWithParam s1 = subQuery(() -> {
                 long le = aggregateWindow(netRange, LAG(netRange.getLast())) + 1;
 
-                SELECT(netRange.getNetworkObject(), netRange.getFirst(), netRange.getLast(),
+                SELECT(netRange.getNetworkObject().getId(), netRange.getFirst(), netRange.getLast(),
                         alias(le, NetworkObjectRangeWithParam::getParam));
                 FROM(netRange);
             });
@@ -240,7 +240,7 @@ public class TestSQL implements CommonTest {
                 long maxLE = aggregateWindow(s1, MAX(s1.getParam()));
                 Long new_start = CASE(WHEN(s1.getFirst() <= maxLE).THEN((Long) null).ELSE(s1.getFirst())).END();
 
-                SELECT(s1.getNetworkObject(), s1.getFirst(), s1.getLast(),
+                SELECT(s1.getNetworkObject().getId(), s1.getFirst(), s1.getLast(),
                         alias(new_start, NetworkObjectRangeWithParam::getParam));
                 FROM(s1);
             });
@@ -249,7 +249,7 @@ public class TestSQL implements CommonTest {
 
                 long left_edge = aggregateWindow(s2, MAX(s2.getParam()));
 
-                SELECT(s2.getNetworkObject(), s2.getFirst(), s2.getLast(),
+                SELECT(s2.getNetworkObject().getId(), s2.getFirst(), s2.getLast(),
                         alias(left_edge, NetworkObjectRangeWithParam::getParam));
                 FROM(s2);
             });
@@ -369,7 +369,7 @@ public class TestSQL implements CommonTest {
             NetworkObjectRangeWithParam s1 = subQuery(() -> {
                 long le = aggregateWindow(netRange, LAG(netRange.getLast())) + 1;
 
-                SELECT(netRange.getNetworkObject(), netRange.getFirst(), netRange.getLast(),
+                SELECT(netRange.getNetworkObject().getId(), netRange.getFirst(), netRange.getLast(),
                         alias(le, NetworkObjectRangeWithParam::getParam));
                 FROM(netRange);
             });
@@ -379,7 +379,7 @@ public class TestSQL implements CommonTest {
                 long maxLE = aggregateWindow(s1, MAX(s1.getParam()));
                 Long new_start = CASE(WHEN(s1.getFirst() <= maxLE).THEN((Long) null).ELSE(s1.getFirst())).END();
 
-                SELECT(s1.getNetworkObject(), s1.getFirst(), s1.getLast(),
+                SELECT(s1.getNetworkObject().getId(), s1.getFirst(), s1.getLast(),
                         alias(new_start, NetworkObjectRangeWithParam::getParam));
                 FROM(s1);
             });
@@ -388,7 +388,7 @@ public class TestSQL implements CommonTest {
 
                 long left_edge = aggregateWindow(s2, MAX(s2.getParam()));
 
-                SELECT(s2.getNetworkObject(), s2.getFirst(), s2.getLast(),
+                SELECT(s2.getNetworkObject().getId(), s2.getFirst(), s2.getLast(),
                         alias(left_edge, NetworkObjectRangeWithParam::getParam));
                 FROM(s2);
             });
@@ -723,14 +723,14 @@ public class TestSQL implements CommonTest {
 
             INSERT().
             INTO(log);
-            SELECT(upd, CURRENT_TIMESTAMP());
+            SELECT(upd.getId(), CURRENT_TIMESTAMP());
             FROM(upd);
         });
 
         String expected = "WITH q0 AS " + "(UPDATE employees AS t1  SET  sales_count = (t1.sales_count + 1)   "
                 + "WHERE (t1.id = (SELECT t2.sales_person " + "FROM accounts AS t2 "
                 + "WHERE (t2.name = 'Acme Corporation') )) " + "RETURNING t1.* )" + "INSERT   INTO employees_log AS t0 "
-                + "SELECT q0.*, CURRENT_TIMESTAMP   " + "FROM q0";
+                + "SELECT q0.id, CURRENT_TIMESTAMP   " + "FROM q0";
 
         assertQuery(query, expected);
     }

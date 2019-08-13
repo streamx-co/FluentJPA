@@ -68,7 +68,7 @@ public interface NetworkObjectRepo extends JpaRepository<NetworkObject, Long>, E
             NetworkObjectRangeWithParam s1 = subQuery(() -> {
                 long le = aggregateWindow(netRange, LAG(netRange.getLast())) + 1;
 
-                SELECT(netRange.getNetworkObject(), netRange.getFirst(), netRange.getLast(),
+                SELECT(netRange.getNetworkObject().getId(), netRange.getFirst(), netRange.getLast(),
                         alias(le, NetworkObjectRangeWithParam::getParam));
                 FROM(netRange);
             });
@@ -78,7 +78,7 @@ public interface NetworkObjectRepo extends JpaRepository<NetworkObject, Long>, E
                 long maxLE = aggregateWindow(s1, MAX(s1.getParam()));
                 Long new_start = CASE(WHEN(s1.getFirst() <= maxLE).THEN((Long) null).ELSE(s1.getFirst())).END();
 
-                SELECT(s1.getNetworkObject(), s1.getFirst(), s1.getLast(),
+                SELECT(s1.getNetworkObject().getId(), s1.getFirst(), s1.getLast(),
                         alias(new_start, NetworkObjectRangeWithParam::getParam));
                 FROM(s1);
             });
@@ -87,7 +87,7 @@ public interface NetworkObjectRepo extends JpaRepository<NetworkObject, Long>, E
 
                 long left_edge = aggregateWindow(s2, MAX(s2.getParam()));
 
-                SELECT(s2.getNetworkObject(), s2.getFirst(), s2.getLast(),
+                SELECT(s2.getNetworkObject().getId(), s2.getFirst(), s2.getLast(),
                         alias(left_edge, NetworkObjectRangeWithParam::getParam));
                 FROM(s2);
             });

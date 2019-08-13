@@ -5,6 +5,7 @@ import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Directives.viewOf;
 import static co.streamx.fluent.SQL.Library.collect;
 import static co.streamx.fluent.SQL.Library.pick;
+import static co.streamx.fluent.SQL.MySQL.SQL.GROUP_CONCAT;
 import static co.streamx.fluent.SQL.Operators.BETWEEN;
 import static co.streamx.fluent.SQL.Operators.EXISTS;
 import static co.streamx.fluent.SQL.Operators.IN;
@@ -18,6 +19,7 @@ import static co.streamx.fluent.SQL.SQL.DEFAULT;
 import static co.streamx.fluent.SQL.SQL.DELETE;
 import static co.streamx.fluent.SQL.SQL.DISTINCT;
 import static co.streamx.fluent.SQL.SQL.FROM;
+import static co.streamx.fluent.SQL.SQL.GROUP;
 import static co.streamx.fluent.SQL.SQL.INSERT;
 import static co.streamx.fluent.SQL.SQL.ON_CONFLICT;
 import static co.streamx.fluent.SQL.SQL.ORDER;
@@ -520,6 +522,26 @@ public class PGTutorial implements CommonTest, PGtutorialTypes {
         });
 
         String expected = "DELETE   FROM link AS t1  USING link_tmp AS t0 " + "WHERE (t1.ID = t0.ID)";
+        assertQuery(query, expected);
+
+    }
+
+    @Test
+    public void testGROUP_CONCAT() {
+
+        FluentQuery query = FluentJPA.SQL((Rental rental) -> {
+
+            Integer id = rental.getCustomer().getId();
+            Integer invId = rental.getInventory().getId();
+
+            SELECT(id, GROUP_CONCAT(DISTINCT(invId).ORDER(BY(invId).DESC()), " "));
+            FROM(rental);
+            GROUP(BY(id));
+
+        });
+
+        String expected = "SELECT t0.customer_id, GROUP_CONCAT(DISTINCT t0.inventory_id  ORDER BY  t0.inventory_id  DESC   SEPARATOR ' ') "
+                + "FROM rental AS t0 " + "GROUP BY  t0.customer_id";
         assertQuery(query, expected);
 
     }

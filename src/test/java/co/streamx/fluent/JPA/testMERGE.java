@@ -42,6 +42,7 @@ import javax.persistence.Table;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import co.streamx.fluent.SQL.Alias;
 import co.streamx.fluent.SQL.TransactSQL.MergeAction;
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
@@ -148,7 +149,7 @@ public class testMERGE implements CommonTest {
 
             // since the function returns SalesOrderDetail, alias
             // SELECTed columns to SalesOrderDetail's fields (type safety is kept)
-            Product product = alias(sod.getProduct(), SalesOrderDetail::getProduct);
+            Alias<Product> product = alias(sod.getProduct(), SalesOrderDetail::getProduct);
             int orderQty = alias(SUM(sod.getOrderQty()), SalesOrderDetail::getOrderQty);
 
             SELECT(product, orderQty);

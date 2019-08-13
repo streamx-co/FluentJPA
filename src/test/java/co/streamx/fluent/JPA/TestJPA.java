@@ -41,11 +41,11 @@ public class TestJPA implements CommonTest {
         FluentQuery builder = FluentJPA.SQL((Person p,
                                              Person p1,
                                              Person p2) -> {
-            SELECT(p1, p);
+            SELECT(p1.getId(), p.getId());
             FROM(p2, p, p1);
         });
 
-        String expected = "SELECT t1.*, t0.* FROM PERSON_TABLE AS t2, PERSON_TABLE AS t0, PERSON_TABLE AS t1";
+        String expected = "SELECT t1.id, t0.id FROM PERSON_TABLE AS t2, PERSON_TABLE AS t0, PERSON_TABLE AS t1";
         assertQuery(builder, expected);
     }
 
@@ -54,12 +54,12 @@ public class TestJPA implements CommonTest {
         FluentQuery builder = FluentJPA.SQL((Person p,
                                              Person p1,
                                              Person p2) -> {
-            SELECT(p1, p);
+            SELECT(p1.getId(), p.getId());
             FROM(p2, p, p1);
             FOR(LockStrength.KEY_SHARE).OF(p).NOWAIT();
         });
 
-        String expected = "SELECT t1.*, t0.* " + "FROM PERSON_TABLE AS t2, PERSON_TABLE AS t0, PERSON_TABLE AS t1 "
+        String expected = "SELECT t1.id, t0.id " + "FROM PERSON_TABLE AS t2, PERSON_TABLE AS t0, PERSON_TABLE AS t1 "
                 + "FOR KEY SHARE  OF t0  NOWAIT";
         assertQuery(builder, expected);
     }
@@ -69,12 +69,12 @@ public class TestJPA implements CommonTest {
         FluentQuery builder = FluentJPA.SQL((Person p,
                                              Person p1,
                                              Person p2) -> {
-            SELECT(p1, p);
+            SELECT(p1.getId(), p.getId());
             FROM(p2, p, p1);
             WHERE(p.getAge() == 5);
         });
 
-        String expected = "SELECT t1.*, t0.* FROM PERSON_TABLE AS t2, PERSON_TABLE AS t0, PERSON_TABLE AS t1 WHERE (t0.aging = 5)";
+        String expected = "SELECT t1.id, t0.id FROM PERSON_TABLE AS t2, PERSON_TABLE AS t0, PERSON_TABLE AS t1 WHERE (t0.aging = 5)";
         assertQuery(builder, expected);
     }
 
@@ -86,11 +86,11 @@ public class TestJPA implements CommonTest {
 
             Person alias = alias(p, "pp");
 
-            SELECT(p1, Math.abs((double) alias.getHeight()), Math.abs((float) p1.getAge()), alias);
+            SELECT(p1.getId(), Math.abs((double) alias.getHeight()), Math.abs((float) p1.getAge()), alias.getId());
             FROM(p2, alias, p1);
         });
 
-        String expected = "SELECT t1.*, ABS(pp.height), ABS(t1.aging), pp.* FROM PERSON_TABLE AS t2, PERSON_TABLE AS pp, PERSON_TABLE AS t1";
+        String expected = "SELECT t1.id, ABS(pp.height), ABS(t1.aging), pp.id FROM PERSON_TABLE AS t2, PERSON_TABLE AS pp, PERSON_TABLE AS t1";
         assertQuery(builder, expected);
     }
 
@@ -140,7 +140,7 @@ public class TestJPA implements CommonTest {
 
             Person alias = alias(p, "pp");
 
-            SELECT(alias(alias.getAge(), Person::getHeight), alias((Person) subQuery(() -> {
+            SELECT(alias(alias.getAge(), Person::getHeight), alias((Long) subQuery(() -> {
                 SELECT(MAX(s3.getFirst()));
                 FROM(s3);
             }), "aging"), subQuery(() -> {
@@ -169,12 +169,12 @@ public class TestJPA implements CommonTest {
                 FROM(s3);
             });
 
-            SELECT(alias(alias.getAge(), Person::getHeight), xx, xx.getIpCount(),
+            SELECT(alias(alias.getAge(), Person::getHeight), xx.getId(), xx.getIpCount(),
                     alias(xx.getObjectInternalType(), Person::getAge));
             FROM(alias, xx);
         });
 
-        String expected = "SELECT pp.aging AS height, q0.*, q0.ip_count, q0.object_internal_type AS aging FROM PERSON_TABLE AS pp, (SELECT t2.first FROM NETWORK_OBJECT_RANGE AS t2 ) AS q0";
+        String expected = "SELECT pp.aging AS height, q0.id, q0.ip_count, q0.object_internal_type AS aging FROM PERSON_TABLE AS pp, (SELECT t2.first FROM NETWORK_OBJECT_RANGE AS t2 ) AS q0";
         assertQuery(builder, expected);
     }
 

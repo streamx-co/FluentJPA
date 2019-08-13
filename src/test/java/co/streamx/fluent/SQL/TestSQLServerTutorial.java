@@ -90,7 +90,7 @@ public class TestSQLServerTutorial implements CommonTest {
     public void testLeftJoin() throws Exception {
         FluentQuery query = FluentJPA.SQL((Product p,
                                            OrderItem oi) -> {
-            SELECT(p.getName(), oi.getOrder());
+            SELECT(p.getName(), oi.getOrder().getId());
             FROM(p).LEFT_JOIN(oi).ON(oi.getProduct() == p);
             ORDER(BY(oi.getOrder()));
         });
@@ -194,7 +194,7 @@ public class TestSQLServerTutorial implements CommonTest {
 
             Float netValue = alias(SUM(i.getQuantity() * i.getListPrice() * (1 - i.getDiscount())), "netValue");
 
-            SELECT(i.getOrder(), netValue);
+            SELECT(i.getOrder().getId(), netValue);
             FROM(i);
             GROUP(BY(i.getOrder()));
             HAVING(netValue > 20000);
@@ -515,7 +515,7 @@ public class TestSQLServerTutorial implements CommonTest {
                                    Staff staffManager,
                                    Staff staffSubordinate) -> {
                 // initial
-                SELECT(staffManager.getId(), staffManager.getFirstName(), staffManager.getManager());
+                SELECT(staffManager.getId(), staffManager.getFirstName(), staffManager.getManager().getId());
 
                 FROM(staffManager);
 
@@ -524,13 +524,14 @@ public class TestSQLServerTutorial implements CommonTest {
                 UNION_ALL();
 
                 // recursive
-                SELECT(staffSubordinate.getId(), staffSubordinate.getFirstName(), staffSubordinate.getManager());
+                SELECT(staffSubordinate.getId(), staffSubordinate.getFirstName(),
+                        staffSubordinate.getManager().getId());
                 // recurse on org
                 FROM(staffSubordinate).JOIN(recurseOn(it)).ON(it.getStaff() == staffSubordinate.getManager());
             });
 
             WITH(RECURSIVE(org));
-            SELECT(org.getStaff(), org.getFirstName(), org.getManager());
+            SELECT(org.getStaff().getId(), org.getFirstName(), org.getManager().getId());
             FROM(org);
 
         });
