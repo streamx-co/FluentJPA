@@ -3,7 +3,9 @@ package co.streamx.fluent.JPA;
 import static co.streamx.fluent.SQL.AggregateFunctions.COUNT;
 import static co.streamx.fluent.SQL.AggregateFunctions.MAX;
 import static co.streamx.fluent.SQL.Directives.alias;
+import static co.streamx.fluent.SQL.Directives.discardSQL;
 import static co.streamx.fluent.SQL.Directives.subQuery;
+import static co.streamx.fluent.SQL.Directives.viewOf;
 import static co.streamx.fluent.SQL.Operators.EXISTS;
 import static co.streamx.fluent.SQL.PostgreSQL.SQL.registerVendorCapabilities;
 import static co.streamx.fluent.SQL.SQL.BY;
@@ -11,9 +13,12 @@ import static co.streamx.fluent.SQL.SQL.DISTINCT;
 import static co.streamx.fluent.SQL.SQL.FOR;
 import static co.streamx.fluent.SQL.SQL.FROM;
 import static co.streamx.fluent.SQL.SQL.GROUP;
+import static co.streamx.fluent.SQL.SQL.INSERT;
 import static co.streamx.fluent.SQL.SQL.ORDER;
 import static co.streamx.fluent.SQL.SQL.SELECT;
+import static co.streamx.fluent.SQL.SQL.VALUES;
 import static co.streamx.fluent.SQL.SQL.WHERE;
+import static co.streamx.fluent.SQL.SQL.row;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -247,5 +252,22 @@ public class TestJPA implements CommonTest {
                 + "FROM COURSE AS t0  INNER JOIN course_like AS t2  ON (t2.COURSE_id = t0.id)  INNER JOIN STUDENT AS t1  ON (t2.STUDENT_id = t1.id) "
                 + "WHERE (t0.name = ?1)";
         assertQuery(query, expected, new Object[] { name });
+    }
+
+    @Test
+    public void MTM2() throws Exception {
+
+        FluentQuery query = FluentJPA.SQL((Student student,
+                                           JoinTable<Student, Course> coursesToStudents) -> {
+
+            discardSQL(coursesToStudents.joinBy(student.getLikedCourses()));
+
+            INSERT().INTO(viewOf(coursesToStudents, jt -> jt.getJoined().getId(), jt -> jt.getInverseJoined().getId()));
+            VALUES(row(1, 2));
+
+        });
+
+        String expected = "INSERT   INTO  course_like AS t1 (STUDENT_id, COURSE_id)  " + "VALUES (1, 2)";
+        assertQuery(query, expected);
     }
 }

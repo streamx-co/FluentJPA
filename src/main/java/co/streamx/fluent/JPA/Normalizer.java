@@ -8,9 +8,11 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import co.streamx.fluent.JPA.spi.SQLConfiguratorImpl;
 import co.streamx.fluent.extree.expression.BinaryExpression;
@@ -21,12 +23,14 @@ import co.streamx.fluent.extree.expression.InvocableExpression;
 import co.streamx.fluent.extree.expression.InvocationExpression;
 import co.streamx.fluent.extree.expression.LambdaExpression;
 import co.streamx.fluent.extree.expression.MemberExpression;
+import co.streamx.fluent.extree.expression.NewArrayInitExpression;
 import co.streamx.fluent.extree.expression.ParameterExpression;
 import co.streamx.fluent.extree.expression.SimpleExpressionVisitor;
 import co.streamx.fluent.extree.expression.UnaryExpression;
 import co.streamx.fluent.notation.Literal;
 import co.streamx.fluent.notation.Local;
 import co.streamx.fluent.notation.Notation;
+import co.streamx.fluent.notation.ViewDeclaration;
 import lombok.SneakyThrows;
 
 
@@ -164,7 +168,22 @@ class Normalizer extends SimpleExpressionVisitor {
             }
         }
 
-        return super.visit(e);
+        Expression visited = super.visit(e);
+        if (method.isAnnotationPresent(ViewDeclaration.class)) {
+
+            Expression entity = e.getArguments().get(0);
+            List<Expression> args = Collections.singletonList(entity);
+            NewArrayInitExpression aliases = (NewArrayInitExpression) e.getArguments().get(1);
+            List<Expression> resolvedAliases = aliases.getInitializers()
+                    .stream()
+                    .map(ex -> Expression.invoke((LambdaExpression<?>) ex, args))
+                    .collect(Collectors.toList());
+
+            aliases = Expression.newArrayInit(aliases.getComponentType(), resolvedAliases);
+            visited = Expression.invoke(target, entity, aliases);
+
+        }
+        return visited;
     }
 
     private static boolean isFunctional(Class<?> clazz) {

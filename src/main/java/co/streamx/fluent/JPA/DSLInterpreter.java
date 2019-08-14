@@ -45,9 +45,9 @@ import co.streamx.fluent.extree.expression.NewArrayInitExpression;
 import co.streamx.fluent.extree.expression.ParameterExpression;
 import co.streamx.fluent.extree.expression.UnaryExpression;
 import co.streamx.fluent.notation.Alias;
-import co.streamx.fluent.notation.AllowsAlias;
 import co.streamx.fluent.notation.Capability;
 import co.streamx.fluent.notation.CommonTableExpression;
+import co.streamx.fluent.notation.CommonTableExpressionType;
 import co.streamx.fluent.notation.Context;
 import co.streamx.fluent.notation.Literal;
 import co.streamx.fluent.notation.Operator;
@@ -55,6 +55,7 @@ import co.streamx.fluent.notation.Parameter;
 import co.streamx.fluent.notation.ParameterContext;
 import co.streamx.fluent.notation.SubQuery;
 import co.streamx.fluent.notation.TableJoin;
+import co.streamx.fluent.notation.TableJoin.Property;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -514,11 +515,12 @@ final class DSLInterpreter
                 List<Expression> eargsFinal = argumentsTarget == e ? eargs : Collections.emptyList();
                 argumentsTarget = e.getBody();
 
-                Function<List<CharSequence>, CharSequence> f = ff
-                        .apply(prepareLambdaParameters(e.getParameters(), eargsFinal));
+                List<Expression> eargsPrepared = prepareLambdaParameters(e.getParameters(), eargsFinal);
+
+                Function<List<CharSequence>, CharSequence> f = ff.apply(eargsPrepared);
 
                 List<Function<List<CharSequence>, CharSequence>> ple = flocals
-                        .map(p -> p != null ? p.apply(eargsFinal) : null)
+                        .map(p -> p != null ? p.apply(eargsPrepared) : null)
                         .collect(Collectors.toList());
 
                 if (!ple.isEmpty()) {
@@ -705,12 +707,13 @@ final class DSLInterpreter
 
             Member tableJoinMember;
             TableJoin tableJoin = m.getAnnotation(TableJoin.class);
-            if (tableJoin != null && !tableJoin.property()) {
+            if (tableJoin != null) {
 
                 if (!(ei instanceof ParameterExpression)) {
                     throw TranslationError.INSTANCE_NOT_JOINTABLE.getError(ei);
                 }
 
+                Object x = instanceArguments;
                 Expression actual = instanceArguments.get(((ParameterExpression) ei).getIndex());
 
                 if (!(actual instanceof ParameterExpression)) {
@@ -751,14 +754,14 @@ final class DSLInterpreter
             CommonTableExpression cte = m.getAnnotation(CommonTableExpression.class);
             if (cte != null) {
 
-                if (cte.self()) {
+                if (cte.value() == CommonTableExpressionType.SELF) {
                     CharSequence subQueryAlias = this.subQueryAlias;
                     return ipp -> pp -> {
                         return subQueries.put(pp.get(0), subQueryAlias, false);
                     };
                 }
 
-                if (cte.value()) {
+                if (cte.value() == CommonTableExpressionType.DECLARATION) {
                     return ipp -> pp -> {
                         StringBuilder with = new StringBuilder(m.getName()).append(KEYWORD_DELIMITER_CHAR);
                         int startLength = with.length();
@@ -777,7 +780,7 @@ final class DSLInterpreter
                     };
                 }
 
-                if (cte.reference()) {
+                if (cte.value() == CommonTableExpressionType.REFERENCE) {
                     return ipp -> pp -> {
 
                         CharSequence seq = pp.get(0);
@@ -823,7 +826,7 @@ final class DSLInterpreter
 
             boolean isSubQuery = m.isAnnotationPresent(SubQuery.class);
             CharSequence subQueryAlias = isSubQuery ? this.subQueryAlias : null;
-            AllowsAlias useAlias = m.getAnnotation(AllowsAlias.class);
+            Alias.Allowed useAlias = m.getAnnotation(Alias.Allowed.class);
 
             return ipp -> {
 
@@ -836,16 +839,20 @@ final class DSLInterpreter
                     if (tableJoin != null) {
                         CharSequence lseq = inst;
                         return pp -> {
-                            if (tableJoin.property()) {
-                                Member member = joinTablesForFROM.get(lseq);
-                                Association association = getAssociationMTM(member, tableJoin.inverse());
-                                return new IdentifierPath.MultiColumnIdentifierPath(m.getName(), association)
-                                        .resolveInstance(lseq);
-                            } else {
-                                Association association = getAssociationMTM(tableJoinMember, tableJoin.inverse());
-                                return renderAssociation(out, association, aliases, lseq,
-                                        tableJoin.inverse() ? pp.get(1) : pp.get(0));
-                            }
+                            Association association = getAssociationMTM(tableJoinMember, tableJoin.inverse());
+                            return renderAssociation(out, association, aliases, lseq,
+                                    tableJoin.inverse() ? pp.get(1) : pp.get(0));
+                        };
+                    }
+
+                    Property tableJoinProperty = m.getAnnotation(TableJoin.Property.class);
+                    if (tableJoinProperty != null) {
+                        CharSequence lseq = inst;
+                        return pp -> {
+                            Member member = joinTablesForFROM.get(lseq);
+                            Association association = getAssociationMTM(member, tableJoinProperty.inverse());
+                            return new IdentifierPath.MultiColumnIdentifierPath(m.getName(), association)
+                                    .resolveInstance(lseq);
                         };
                     }
 
@@ -880,7 +887,8 @@ final class DSLInterpreter
 
                     return pp -> {
 
-                        CharSequence currentSubQuery = (cte != null && cte.decorator()) ? subQueries.sealName(pp.get(0))
+                        CharSequence currentSubQuery = (cte != null
+                                && cte.value() == CommonTableExpressionType.DECORATOR) ? subQueries.sealName(pp.get(0))
                                 : null;
 
                         if (instance != null) {
