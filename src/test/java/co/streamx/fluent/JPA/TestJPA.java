@@ -13,12 +13,27 @@ import static co.streamx.fluent.SQL.SQL.DISTINCT;
 import static co.streamx.fluent.SQL.SQL.FOR;
 import static co.streamx.fluent.SQL.SQL.FROM;
 import static co.streamx.fluent.SQL.SQL.GROUP;
+import static co.streamx.fluent.SQL.SQL.HAVING;
 import static co.streamx.fluent.SQL.SQL.INSERT;
 import static co.streamx.fluent.SQL.SQL.ORDER;
 import static co.streamx.fluent.SQL.SQL.SELECT;
 import static co.streamx.fluent.SQL.SQL.VALUES;
 import static co.streamx.fluent.SQL.SQL.WHERE;
 import static co.streamx.fluent.SQL.SQL.row;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import javax.persistence.Column;
+import javax.persistence.FetchType;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToMany;
+import javax.persistence.Table;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -33,6 +48,8 @@ import co.streamx.fluent.JPA.repository.entities.Person;
 import co.streamx.fluent.JPA.repository.entities.Student;
 import co.streamx.fluent.SQL.JoinTable;
 import co.streamx.fluent.SQL.LockStrength;
+import co.streamx.fluent.notation.Tuple;
+import lombok.Data;
 
 public class TestJPA implements CommonTest {
 
@@ -248,8 +265,8 @@ public class TestJPA implements CommonTest {
 
         });
 
-        String expected = "SELECT COUNT(t2.COURSE_id) "
-                + "FROM COURSE AS t0  INNER JOIN course_like AS t2  ON (t2.COURSE_id = t0.id)  INNER JOIN STUDENT AS t1  ON (t2.STUDENT_id = t1.id) "
+        String expected = "SELECT COUNT(t2.course_id) "
+                + "FROM COURSE AS t0  INNER JOIN course_like AS t2  ON (t2.course_id = t0.id)  INNER JOIN STUDENT AS t1  ON (t2.student_id = t1.id) "
                 + "WHERE (t0.name = ?1)";
         assertQuery(query, expected, new Object[] { name });
     }
@@ -267,7 +284,70 @@ public class TestJPA implements CommonTest {
 
         });
 
-        String expected = "INSERT   INTO  course_like AS t1 (STUDENT_id, COURSE_id)  " + "VALUES (1, 2)";
+        String expected = "INSERT   INTO  course_like AS t1 (student_id, course_id)  " + "VALUES (1, 2)";
         assertQuery(query, expected);
+    }
+
+    @Tuple
+    @Table(name = "product")
+    @Data
+    public class Product {
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        @Column(name = "product_id")
+        private long productId;
+
+        @ManyToMany()
+        @javax.persistence.JoinTable(name = "gemstone_product", joinColumns = {
+                @JoinColumn(name = "product_id") }, inverseJoinColumns = {
+                @JoinColumn(name = "gemstone_id") })
+        private Set<Gemstone> gemstones = new HashSet<>(0);
+
+        // setters and getters
+    }
+
+    @Tuple
+    @Table(name = "gemstone")
+    @Data
+    public class Gemstone {
+
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        @Column(name = "gemstone_id")
+        private long gemstoneId;
+
+        @ManyToMany(fetch = FetchType.LAZY)
+        @javax.persistence.JoinTable(name = "gemstone_product", joinColumns = {
+                @JoinColumn(name = "gemstone_id") }, inverseJoinColumns = { @JoinColumn(name = "product_id") })
+        private Set<Product> products = new HashSet<>(0);
+
+        // setters and getters
+    }
+
+    @Test
+    public void MTM3() throws Exception {
+
+        List<Long> gemstoneIds = Arrays.asList(51L, 46L);
+
+        int count = gemstoneIds.size();
+
+        FluentQuery query = FluentJPA.SQL((Gemstone gemstone,
+                                           JoinTable<Gemstone, Product> gemstoneProduct) -> {
+
+            discardSQL(gemstoneProduct.joinBy(gemstone.getProducts()));
+
+            long productId = gemstoneProduct.getInverseJoined().getProductId();
+            long gemstoneId = gemstoneProduct.getJoined().getGemstoneId();
+
+            SELECT(productId);
+            FROM(gemstoneProduct);
+            WHERE(gemstoneIds.contains(gemstoneId));
+            GROUP(BY(productId));
+            HAVING(COUNT(gemstoneId) == count);
+        });
+
+        String expected = "SELECT t1.product_id " + "FROM gemstone_product AS t1 " + "WHERE (t1.gemstone_id IN ?1 ) "
+                + "GROUP BY  t1.product_id  " + "HAVING (COUNT(t1.gemstone_id) = ?2)";
+        assertQuery(query, expected, new Object[] { gemstoneIds, count });
     }
 }

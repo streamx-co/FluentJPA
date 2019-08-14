@@ -286,26 +286,47 @@ final class JPAHelpers {
                     declaringClass = getTargetByParameterizedType((Field) field);
             }
 
-            List<CharSequence> entity = Streams.map(getClassMeta(declaringClass).getIds(), ID::getColumn);
-            List<CharSequence> join;
+            List<CharSequence> entity = null;
+            List<CharSequence> join = null;
 
             JoinTable joinTable = leftField.getAnnotation(JoinTable.class);
+            String declaringTableName = getTableName(declaringClass);
             if (joinTable != null) {
                 JoinColumn[] columns = inverse ? joinTable.inverseJoinColumns() : joinTable.joinColumns();
                 if (columns != null) {
+
                     join = new ArrayList<>();
                     for (int i = 0; i < columns.length; i++) {
                         JoinColumn column = columns[i];
+                        String columnName = column.name();
                         String referencedColumnName = column.referencedColumnName();
-                        join.add(Strings.isNullOrEmpty(referencedColumnName)
-                                ? concatWithUnderscore(getTableName(declaringClass), entity.get(i))
-                                : referencedColumnName);
+
+                        if (Strings.isNullOrEmpty(referencedColumnName)) {
+                            if (entity == null)
+                                entity = Streams.map(getClassMeta(declaringClass).getIds(), ID::getColumn);
+
+                            if (entity.get(i) == null) {
+                                throw new IllegalStateException(
+                                        "referencedColumnName not specified on field: " + field);
+                            }
+                        } else {
+                            if (entity == null)
+                                entity = new ArrayList<>();
+                            entity.set(i, referencedColumnName);
+                        }
+
+                        join.add(Strings.isNullOrEmpty(columnName)
+                                ? concatWithUnderscore(declaringTableName, entity.get(i))
+                                : columnName);
                     }
-                } else {
-                    join = entity;
                 }
-            } else {
-                join = entity;
+            }
+
+            if (entity == null) {
+                entity = Streams.map(getClassMeta(declaringClass).getIds(), ID::getColumn);
+                join = entity.stream()
+                        .map(col -> concatWithUnderscore(declaringTableName, col))
+                        .collect(Collectors.toList());
             }
 
             return new Association(join, entity, true);
