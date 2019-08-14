@@ -329,6 +329,14 @@ public class TestJPA implements CommonTest {
 
         List<Long> gemstoneIds = Arrays.asList(51L, 46L);
 
+        FluentQuery query = getProductsContainingAllStones(gemstoneIds);
+
+        String expected = "SELECT t1.product_id " + "FROM gemstone_product AS t1 " + "WHERE (t1.gemstone_id IN ?1 ) "
+                + "GROUP BY  t1.product_id  " + "HAVING (COUNT(t1.gemstone_id) = ?2)";
+        assertQuery(query, expected, new Object[] { gemstoneIds, gemstoneIds.size() });
+    }
+
+    private FluentQuery getProductsContainingAllStones(List<Long> gemstoneIds) {
         int count = gemstoneIds.size();
 
         FluentQuery query = FluentJPA.SQL((Gemstone gemstone,
@@ -345,9 +353,6 @@ public class TestJPA implements CommonTest {
             GROUP(BY(productId));
             HAVING(COUNT(gemstoneId) == count);
         });
-
-        String expected = "SELECT t1.product_id " + "FROM gemstone_product AS t1 " + "WHERE (t1.gemstone_id IN ?1 ) "
-                + "GROUP BY  t1.product_id  " + "HAVING (COUNT(t1.gemstone_id) = ?2)";
-        assertQuery(query, expected, new Object[] { gemstoneIds, count });
+        return query;
     }
 }
