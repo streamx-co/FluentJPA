@@ -713,7 +713,6 @@ final class DSLInterpreter
                     throw TranslationError.INSTANCE_NOT_JOINTABLE.getError(ei);
                 }
 
-                Object x = instanceArguments;
                 Expression actual = instanceArguments.get(((ParameterExpression) ei).getIndex());
 
                 if (!(actual instanceof ParameterExpression)) {
