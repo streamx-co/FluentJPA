@@ -77,7 +77,7 @@ private static int avgPriceForProductModel(ProductModel model) {
 
 ### Example 2 - [testInsertFromOUTPUT()](src/test/java/co/streamx/fluent/JPA/testMERGE.java)
 
-**3 sub queries "converted" to functions** (original SQL comes from [SQL Server documentation](https://docs.microsoft.com/en-us/sql/t-sql/queries/output-clause-transact-sql?view=sql-server-2017#k-inserting-data-returned-from-an-output-clause)).
+**3 sub queries "converted" to functions** (original SQL comes from [SQL Server documentation](https://docs.microsoft.com/en-us/sql/t-sql/queries/output-clause-transact-sql#k-inserting-data-returned-from-an-output-clause)).
 
 ```java
 // Arguments are automatically captured and passed in via JPA's Query.setParameter()
