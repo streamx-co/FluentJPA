@@ -67,14 +67,14 @@ public class ModeComTutorial implements CommonTest, ModeComTutorialTypes {
         FluentQuery query = FluentJPA.SQL((CrunchbaseCompany c) -> {
 
             Timestamp plusOneWeek = add(DataTypes.TIMESTAMP.cast(c.getFoundedAtClean()),
-                    DataTypes.INTERVAL.literal("1 week"));
+                    DataTypes.INTERVAL.literal(1, DatePart.WEEK));
             SELECT(c.getPermalink(), c.getFoundedAtClean(), plusOneWeek);
             FROM(c);
             WHERE(c.getFoundedAtClean() != null);
 
         });
 
-        String expected = "SELECT t0.permalink, t0.founded_at_clean, (CAST(t0.founded_at_clean AS TIMESTAMP) + INTERVAL  '1 week'  ) "
+        String expected = "SELECT t0.permalink, t0.founded_at_clean, (CAST(t0.founded_at_clean AS TIMESTAMP) + INTERVAL  '1' WEEK  ) "
                 + "FROM tutorial.crunchbase_companies_clean_date t0 " + "WHERE (t0.founded_at_clean IS NOT NULL)";
 
         assertQuery(query, expected);

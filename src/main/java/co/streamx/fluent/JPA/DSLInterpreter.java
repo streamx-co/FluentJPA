@@ -849,6 +849,8 @@ final class DSLInterpreter
                         CharSequence lseq = inst;
                         return pp -> {
                             Member member = joinTablesForFROM.get(lseq);
+                            if (member == null)
+                                throw TranslationError.ASSOCIATION_NOT_INITED.getError(m);
                             Association association = getAssociationMTM(member, tableJoinProperty.inverse());
                             return new IdentifierPath.MultiColumnIdentifierPath(m.getName(), association)
                                     .resolveInstance(lseq);
