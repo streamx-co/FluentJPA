@@ -4,6 +4,7 @@ import static co.streamx.fluent.SQL.AggregateFunctions.COUNT;
 import static co.streamx.fluent.SQL.AggregateFunctions.MAX;
 import static co.streamx.fluent.SQL.Directives.alias;
 import static co.streamx.fluent.SQL.Directives.discardSQL;
+import static co.streamx.fluent.SQL.Directives.injectSQL;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Directives.viewOf;
 import static co.streamx.fluent.SQL.Operators.EXISTS;
@@ -48,6 +49,8 @@ import co.streamx.fluent.JPA.repository.entities.Person;
 import co.streamx.fluent.JPA.repository.entities.Student;
 import co.streamx.fluent.SQL.JoinTable;
 import co.streamx.fluent.SQL.LockStrength;
+import co.streamx.fluent.SQL.Versioning;
+import co.streamx.fluent.SQL.TransactSQL.DataTypes;
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
 
@@ -83,6 +86,21 @@ public class TestJPA implements CommonTest {
 
         String expected = "SELECT t1.id, t0.id " + "FROM PERSON_TABLE AS t2, PERSON_TABLE AS t0, PERSON_TABLE AS t1 "
                 + "FOR KEY SHARE  OF t0  NOWAIT";
+        assertQuery(builder, expected);
+    }
+
+    @Test
+    public void testSelectFromVersioning() throws Exception {
+        FluentQuery builder = FluentJPA.SQL((Person p,
+                                             Person p1) -> {
+            SELECT(p1.getId(), p.getId());
+            FROM(p, p1);
+            FOR(Versioning.SYSTEM_TIME).AS_OF(DataTypes.DATE.raw("2001-10-05"));
+            injectSQL("hi there!");
+        });
+
+        String expected = "SELECT t1.id, t0.id " + "FROM PERSON_TABLE AS t0, PERSON_TABLE AS t1 "
+                + "FOR SYSTEM_TIME  AS OF '2001-10-05' " + "hi there!";
         assertQuery(builder, expected);
     }
 
