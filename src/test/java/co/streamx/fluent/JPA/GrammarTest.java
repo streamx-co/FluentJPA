@@ -133,7 +133,7 @@ public class GrammarTest implements CommonTest {
 
             DataType<String> VARCHAR_4000 = DataTypeNames.VARCHAR.create(4000);
 
-            Date constDate = DataTypes.DATE.literal("2001-10-05");
+            Date constDate = DataTypes.DATE.of("2001-10-05");
             SELECT(constDate);
             semicolon();
             SELECT(DataTypes.DATE.derive("{0}[]").cast("2001-10-06"));

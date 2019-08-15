@@ -279,7 +279,7 @@ public class PGTutorial implements CommonTest, PGtutorialTypes {
 
             SELECT(inv);
             FROM(inv).JOIN(rental).ON(rental.getInventory() == inv);
-            WHERE(BETWEEN(rental.getReturnDate(), DATE.literal("2005-05-29"), DATE.literal("2005-05-30")));
+            WHERE(BETWEEN(rental.getReturnDate(), DATE.of("2005-05-29"), DATE.of("2005-05-30")));
         });
 
         expected = "SELECT t0.* "
@@ -424,7 +424,7 @@ public class PGTutorial implements CommonTest, PGtutorialTypes {
         FluentQuery query = FluentJPA.SQL((Link link) -> {
 
             INSERT().INTO(viewOf(link, Link::getUrl, Link::getName, Link::getLastUpdate));
-            VALUES(row("http://www.facebook.com", "Facebook", DATE.literal("2013-06-01")));
+            VALUES(row("http://www.facebook.com", "Facebook", DATE.of("2013-06-01")));
         });
 
         String expected = "INSERT   INTO  link AS t0 (url, name, last_update)  "

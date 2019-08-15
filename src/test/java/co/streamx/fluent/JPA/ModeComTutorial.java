@@ -67,7 +67,7 @@ public class ModeComTutorial implements CommonTest, ModeComTutorialTypes {
         FluentQuery query = FluentJPA.SQL((CrunchbaseCompany c) -> {
 
             Timestamp plusOneWeek = add(DataTypes.TIMESTAMP.cast(c.getFoundedAtClean()),
-                    DataTypes.INTERVAL.literal(1, DatePart.WEEK));
+                    DataTypes.INTERVAL.of(1, DatePart.WEEK));
             SELECT(c.getPermalink(), c.getFoundedAtClean(), plusOneWeek);
             FROM(c);
             WHERE(c.getFoundedAtClean() != null);
@@ -213,7 +213,7 @@ public class ModeComTutorial implements CommonTest, ModeComTutorialTypes {
             Long rowNumber = aggregateBy(ROW_NUMBER()).OVER(ORDER(BY(bs.getStartTime()))).AS("row_number");
 
             selectMany(bs, bs.getStartTerminal(), bs.getStartTime(), bs.getDurationSeconds(), rowNumber);
-            WHERE(less(bs.getStartTime(), DataTypes.TIMESTAMP.literal("2012-01-08")));
+            WHERE(less(bs.getStartTime(), DataTypes.TIMESTAMP.of("2012-01-08")));
 
         });
 
@@ -232,7 +232,7 @@ public class ModeComTutorial implements CommonTest, ModeComTutorialTypes {
                     .AS("row_number");
 
             selectMany(bs, bs.getStartTerminal(), bs.getStartTime(), bs.getDurationSeconds(), rowNumber);
-            WHERE(less(bs.getStartTime(), DataTypes.TIMESTAMP.literal("2012-01-08")));
+            WHERE(less(bs.getStartTime(), DataTypes.TIMESTAMP.of("2012-01-08")));
 
         });
 
