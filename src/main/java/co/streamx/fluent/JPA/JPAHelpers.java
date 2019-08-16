@@ -23,6 +23,7 @@ import javax.persistence.AttributeOverride;
 import javax.persistence.AttributeOverrides;
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
+import javax.persistence.Embedded;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
 import javax.persistence.Id;
@@ -492,7 +493,11 @@ final class JPAHelpers {
     }
 
     public static boolean isEmbeddable(Class<?> entity) {
-        return entity.getAnnotation(Embeddable.class) != null;
+        return entity.isAnnotationPresent(Embedded.class);
+    }
+
+    public static boolean isEmbedded(Member field) {
+        return getAnnotationFromProperty(field, Embeddable.class) != null;
     }
 
     private static IdentifierPath getColumnName(Member field) {

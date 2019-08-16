@@ -7,6 +7,7 @@ import static co.streamx.fluent.JPA.JPAHelpers.getJoinTableName;
 import static co.streamx.fluent.JPA.JPAHelpers.getTableName;
 import static co.streamx.fluent.JPA.JPAHelpers.isCollection;
 import static co.streamx.fluent.JPA.JPAHelpers.isEmbeddable;
+import static co.streamx.fluent.JPA.JPAHelpers.isEmbedded;
 import static co.streamx.fluent.JPA.JPAHelpers.isEntityLike;
 import static co.streamx.fluent.JPA.JPAHelpers.isScalar;
 import static co.streamx.fluent.JPA.JPAHelpers.wrap;
@@ -89,6 +90,7 @@ final class DSLInterpreter
 
     private SubQueryManager subQueries_ = new SubQueryManager(Collections.emptyList());
     private Set<CharSequence> parameterRefs = new HashSet<>();
+    private Set<CharSequence> tableRefs = new HashSet<>();
     private Map<CharSequence, CharSequence> aliases_ = Collections.emptyMap();
     private CharSequence subQueryAlias;
     private List<CharSequence> undeclaredAliases = Collections.emptyList();
@@ -806,7 +808,8 @@ final class DSLInterpreter
                 ParameterContext context = calculateContext(contextAnnotation, functionContext);
 
                 if (context == ParameterContext.FROM || context == ParameterContext.FROM_WITHOUT_ALIAS)
-                    argsBuilder.add(ex -> tableReference(ex != null ? ex : arg, subQueries, aliases));
+                    argsBuilder.add(ex -> setupParameterRenderingContext(context,
+                            tableReference(ex != null ? ex : arg, subQueries, aliases)));
                 else {
                     Literal literal = getAnnotation(parameterAnnotations, Literal.class);
 
@@ -870,11 +873,6 @@ final class DSLInterpreter
                 if (function != null) {
 
                     renderAliases |= function.aliasesVisible();
-
-                    ParameterContext parameterContext = getParameterContext(function);
-                    if (instance == null && parameterContext != ParameterContext.INHERIT) {
-                        renderingContext = parameterContext; // starting new clause
-                    }
 
                     CharSequence fn = function.name().equals(co.streamx.fluent.notation.Function.USE_METHOD_NAME)
                             ? function.underscoresAsBlanks()
@@ -987,7 +985,7 @@ final class DSLInterpreter
                         return out;
                     }
 
-                    if (isEmbeddable(m.getReturnType()) || isCollection(m.getReturnType()))
+                    if (isEmbeddable(m.getReturnType()) || isCollection(m.getReturnType()) || isEmbedded(m))
                         // embedded
                         return out;
 
@@ -1106,7 +1104,7 @@ final class DSLInterpreter
             return label;
         }
 
-        CharSequence tableName = resolveTableName(seq, resultType);
+        CharSequence tableName = tableRefs.contains(seq) ? resolveTableName(seq, resultType) : null;
         if (hasLabel && tableName == null)
             tableName = seq instanceof RequiresParenthesesInAS
                     ? new StringBuilder(LEFT_PARAN).append(((RequiresParenthesesInAS) seq).getWrapped())
@@ -1114,7 +1112,8 @@ final class DSLInterpreter
                     : seq;
 
         if (tableName != null) {
-            if (renderingContext == ParameterContext.FROM) {
+            if (renderingContext == ParameterContext.FROM
+                    || (renderingContext == ParameterContext.FROM_WITHOUT_ALIAS && hasLabel)) {
                 StringBuilder fromBuilder = new StringBuilder(tableName);
                 fromBuilder.append(capabilities.contains(Capability.TABLE_AS_ALIAS) ? SEP_AS_SEP : KEYWORD_DELIMITER);
                 return fromBuilder.append(label);
@@ -1183,7 +1182,9 @@ final class DSLInterpreter
                     Class<?> resultType = e.getResultType();
                     if (!isEntityLike(resultType))
                         throw TranslationError.CANNOT_CALCULATE_TABLE_REFERENCE.getError(resultType);
-                    return registerJoinTable(new StringBuilder(TABLE_ALIAS_PREFIX).append(parameterCounter++), e);
+                    StringBuilder tableRef = new StringBuilder(TABLE_ALIAS_PREFIX).append(parameterCounter++);
+                    tableRefs.add(tableRef);
+                    return registerJoinTable(tableRef, e);
                 }
 
                 CharSequence value = t.get(index);
