@@ -8,7 +8,7 @@ FluentJPA fills this gap in three ways:
 
 * lets write native SQL in **Java**!
 And by saying Java, we **mean** Java. There is no DSL or semantic gap. You use `+` for addition and `-` for subtraction. You use getter to get a property value and setter to set it. You use functions and variables, so when you call SQL `SELECT`, you call it like any other library method. And when you need a sub query, you will probably prefer to put it in a separate function ... as you usually do when you code rest of your business logic. To accomplish this, FluentJPA reads the Java Byte Code from the .class files in runtime and translates it all the way to SQL.
-* covers the entire SQL [DML](https://en.wikipedia.org/wiki/Data_manipulation_language) standard. [A Lot Has Changed Since SQL-92](https://modern-sql.com), e.g. [SQL-99 Common Table Expressions](https://github.com/streamx-co/FluentJPA/wiki/Common-Table-Expressions) (`WITH` clause), [SQL-2003 Window Functions](https://github.com/streamx-co/FluentJPA/wiki/Window-Functions) (`OVER` clause). FluentJPA offers this power as a handy Java library.
+* covers the entire SQL [DML](https://en.wikipedia.org/wiki/Data_manipulation_language) standard. [A Lot Has Changed Since SQL-92](https://modern-sql.com), e.g. [SQL-99 Common Table Expressions](https://github.com/streamx-co/FluentJPA/wiki/Common-Table-Expressions) (`WITH` clause), [SQL-2003 Window Functions](https://github.com/streamx-co/FluentJPA/wiki/Window-Functions) (`OVER` clause), [SQL-2003 MERGE](https://github.com/streamx-co/FluentJPA/wiki/MERGE) (`UPSERT` clause), [Dynamic Queries](https://github.com/streamx-co/FluentJPA/wiki/Dynamic-Queries) without [Criteria API](https://en.wikibooks.org/wiki/Java_Persistence/Criteria). FluentJPA offers this power as a handy Java library.
 * naturally extends the JPA model. Once you mapped your entities, forget about mapping. Use JPA entity getters and setters to write expressions and joins, store intermediate calculations in variables, pass them to methods - we seamlessly translate it to SQL. FluentJPA lets you use SQL to *program* your business logic.
 
 There is no bootstrap, code generation step or anything else needed to use FluentJPA. Add [dependencies](https://github.com/streamx-co/FluentJPA/wiki/Setup) to your project build system and unlock the full power of type-safe Object Oriented SQL in your JPA project without compromises!
@@ -187,44 +187,37 @@ FluentJPA.SQL((Part allParts) -> {
 });
 ```
 
-### Example 4 - [testLet1percentBonusForEarners8000()](src/test/java/co/streamx/fluent/JPA/testMERGE.java)
+### Example 4 - [getByNameLike()](src/test/java/co/streamx/fluent/JPA/GrammarTest.java)
 
-**1 sub query and a very nice MERGE clause** (original SQL comes from [Oracle documentation](https://docs.oracle.com/en/database/oracle/oracle-database/18/sqlrf/MERGE.html), first example)
+[Dynamic Queries](https://github.com/streamx-co/FluentJPA/wiki/Dynamic-Queries) without [Criteria API](https://en.wikibooks.org/wiki/Java_Persistence/Criteria):
 
 ```java
-int threshold; // passed by an external parameter
+// build the criteria dynamically
+Function1<CoverageMaster, Boolean> dynamicFilter = buildOr1(likes);
 
-FluentQuery query = FluentJPA.SQL((Bonus bonus1) -> {
+FluentQuery query = FluentJPA.SQL((UtilizationDTL util,
+                                   UtilizationCoverageDTL utilizationCover,
+                                   CoverageMaster coverMaster) -> {
+    SELECT(DISTINCT(util.getId()));
+    FROM(util).JOIN(utilizationCover)
+            .ON(utilizationCover.getUtilization() == util)
+            .JOIN(coverMaster)
+            .ON(utilizationCover.getMaster() == coverMaster);
 
-    Bonus bonus = alias(bonus1, "D");
-
-    Employee empFromDep80 = alias(employeesFromDepartment(80), "S");
-
-    MERGE().INTO(bonus).USING(empFromDep80).ON(bonus.getEmployee() == empFromDep80);
-    // Uses @JoinColumn to resolve the association --------------^^^^^^
-
-    WHEN_MATCHED().THEN(() -> {
-        MERGE_UPDATE().SET(() -> {
-            bonus.setBonus(bonus.getBonus() + empFromDep80.getSalary() * .01f);
-        });
-
-        DELETE();
-        WHERE(empFromDep80.getSalary() > threshold);
-    });
-
-    WHEN_NOT_MATCHED().THEN(() -> {
-        MERGE_INSERT(bonus.getEmployee(), bonus.getBonus());
-        VALUES(row(empFromDep80.getId(), empFromDep80.getSalary() * .01f));
-        WHERE(empFromDep80.getSalary() <= threshold);
-    });
+    WHERE(dynamicFilter.apply(coverMaster) && util.isCompleted());
+      //  ^^^^^^^^^^^^^^^^^^^--- inject the criteria,
+      //                         rest of the query is unaffected
+    ORDER(BY(util.getId()));
 });
 
-private static Employee employeesFromDepartment(int num) {
-    return subQuery((Employee emp) -> {
-        SELECT(emp);
-        FROM(emp);
-        WHERE(emp.getDepartment().getId() == num);
-    });
+private Function1<CoverageMaster, Boolean> buildOr1(List<String> likes) {
+    Function1<CoverageMaster, Boolean> criteria = Function1.FALSE();
+
+    for (String like : likes)
+        criteria = criteria.or(p -> p.getCoverageName().toLowerCase()
+                                                       .matches(parameter(like)));
+
+    return criteria;
 }
 ```
 
