@@ -18,7 +18,7 @@ interface Streams {
                                           BiFunction<? super A, ? super B, ? extends C> zipper) {
         int longestLength = Math.max(lista.size(), listb.size());
         return IntStream.range(0, longestLength).mapToObj(i -> {
-            return zipper.apply(lista.get(i), listb.get(i));
+            return zipper.apply(i < lista.size() ? lista.get(i) : null, i < listb.size() ? listb.get(i) : null);
         });
     }
 

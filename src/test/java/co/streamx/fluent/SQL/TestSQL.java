@@ -487,7 +487,7 @@ public class TestSQL implements CommonTest {
     @Test
     public void testQueriesValues() throws Exception {
         FluentQuery query = FluentJPA.SQL(() -> {
-            NumberLetter numLetter = alias(VALUES(row(1, "one"), row(2, "two")), "t");
+            NumberLetter numLetter = alias((NumberLetter) VALUES(row(1, "one"), row(2, "two")), "t");
 
             SELECT(numLetter);
             FROM(viewOf(numLetter, NumberLetter::getNumber, NumberLetter::getLetter));
@@ -501,7 +501,7 @@ public class TestSQL implements CommonTest {
     @Test
     public void testQueriesValues1() throws Exception {
         FluentQuery query = FluentJPA.SQL(() -> {
-            NumberLetter numLetter = VALUES(row(1, "one"), row(2, "two"));
+            NumberLetter numLetter = (NumberLetter) VALUES(row(1, "one"), row(2, "two"));
 
             SELECT(numLetter);
             FROM(viewOf(numLetter, NumberLetter::getNumber, NumberLetter::getLetter));

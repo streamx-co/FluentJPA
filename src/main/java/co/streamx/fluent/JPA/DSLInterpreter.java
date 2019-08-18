@@ -57,33 +57,35 @@ import co.streamx.fluent.notation.ParameterContext;
 import co.streamx.fluent.notation.SubQuery;
 import co.streamx.fluent.notation.TableJoin;
 import co.streamx.fluent.notation.TableJoin.Property;
+import co.streamx.fluent.notation.ViewDeclaration;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 final class DSLInterpreter
-        implements ExpressionVisitor<Function<List<Expression>, Function<List<CharSequence>, CharSequence>>> {
+        implements ExpressionVisitor<Function<List<Expression>, Function<List<CharSequence>, CharSequence>>>,
+        DSLInterpreterHelpers {
 
     private static final Optional<Boolean> OPTIONAL_FALSE = Optional.of(false);
-    private static final char UNDERSCORE_CHAR = '_';
-    private static final char COMMA_CHAR = ',';
-    private static final String AS = "AS";
-    private static final String NEW_LINE = "\n";
-    private static final String STAR = "*";
-    private static final char QUESTION_MARK_CHAR = '?';
-    private static final char DOT_CHAR = IdentifierPath.DOT;
-    private static final String DOT = "" + DOT_CHAR;
-    private static final String AND = "AND";
-    private static final String EQUAL_SIGN = "=";
-    private static final String KEYWORD_DELIMITER = " ";
-    private static final String SEP_AS_SEP = KEYWORD_DELIMITER + AS + KEYWORD_DELIMITER;
-    private static final char KEYWORD_DELIMITER_CHAR = ' ';
-    private static final String TABLE_ALIAS_PREFIX = "t";
-    private static final String SUB_QUERY_ALIAS_PREFIX = "q";
-    private static final String LEFT_PARAN = "(";
-    private static final String RIGHT_PARAN = ")";
-    private static final char SINGLE_QUOTE_CHAR = '\'';
+    static final char UNDERSCORE_CHAR = '_';
+    static final char COMMA_CHAR = ',';
+    static final String AS = "AS";
+    static final String NEW_LINE = "\n";
+    static final String STAR = "*";
+    static final char QUESTION_MARK_CHAR = '?';
+    static final char DOT_CHAR = IdentifierPath.DOT;
+    static final String DOT = "" + DOT_CHAR;
+    static final String AND = "AND";
+    static final String EQUAL_SIGN = "=";
+    static final String KEYWORD_DELIMITER = " ";
+    static final String SEP_AS_SEP = KEYWORD_DELIMITER + AS + KEYWORD_DELIMITER;
+    static final char KEYWORD_DELIMITER_CHAR = ' ';
+    static final String TABLE_ALIAS_PREFIX = "t";
+    static final String SUB_QUERY_ALIAS_PREFIX = "q";
+    static final String LEFT_PARAN = "(";
+    static final String RIGHT_PARAN = ")";
+    static final char SINGLE_QUOTE_CHAR = '\'';
 
     @NonNull
     private final Set<Capability> capabilities;
@@ -133,29 +135,6 @@ final class DSLInterpreter
 
     protected Map<CharSequence, CharSequence> getAliases() {
         return aliases_;
-    }
-
-    private static Expression bind(List<Expression> args,
-                                   Expression e) {
-        if (e instanceof ParameterExpression) {
-            int index = ((ParameterExpression) e).getIndex();
-            if (index < args.size()) {
-                Expression bound = args.get(index);
-
-                int boundExpressionType = bound.getExpressionType();
-                if (boundExpressionType == ExpressionType.Parameter || boundExpressionType == ExpressionType.Constant) {
-                    if ((bound.getResultType() != Object.class)
-                            && (wrap(bound.getResultType()) != wrap(e.getResultType())))
-                        return boundExpressionType == ExpressionType.Constant
-                                ? Expression.parameter(bound.getResultType(), index)
-                                : bound;
-                } else {
-                    e = bound;
-                }
-            }
-        }
-
-        return e;
     }
 
     @Override
@@ -251,29 +230,7 @@ final class DSLInterpreter
         return out.append(RIGHT_PARAN);
     }
 
-    private static String getOperatorSign(int expressionType) {
-        switch (expressionType) {
-        case ExpressionType.LogicalAnd:
-            return "AND";
-        case ExpressionType.LogicalOr:
-            return "OR";
-        case ExpressionType.NotEqual:
-            return "<>";
-        default:
-            return ExpressionType.toString(expressionType);
-        }
-    }
 
-    private static CharSequence renderBinaryOperator(CharSequence lseq,
-                                               String op,
-                                               CharSequence rseq) {
-        return new StringBuilder(LEFT_PARAN).append(verifyParentheses(lseq))
-                .append(KEYWORD_DELIMITER_CHAR)
-                .append(op)
-                .append(KEYWORD_DELIMITER_CHAR)
-                .append(verifyParentheses(rseq))
-                .append(RIGHT_PARAN);
-    }
 
     @Override
     public Function<List<Expression>, Function<List<CharSequence>, CharSequence>> visit(ConstantExpression e) {
@@ -289,78 +246,16 @@ final class DSLInterpreter
             if (collectingParameters.orElse(false))
                 return args -> registerParameter(value);
 
-            return args -> new DynamicConstant(value);
+            return args -> new DynamicConstant(value, this);
         };
     }
 
-    @RequiredArgsConstructor
-    private class DynamicConstant implements CharSequence {
-
-        private CharSequence string;
-        private final Object value;
-
-        private void lazyInit() {
-            if (string == null) {
-                if (value instanceof CharSequence || value instanceof Character) {
-                    // wrap with quotes and escape existing quotes
-                    StringBuilder out = new StringBuilder().append(SINGLE_QUOTE_CHAR);
-                    if (value instanceof CharSequence)
-                        out.append((CharSequence) value);
-                    else
-                        out.append((char) value);
-                    for (int i = out.length() - 1; i > 0; i--) {
-                        if (out.charAt(i) == SINGLE_QUOTE_CHAR)
-                            out.insert(i, SINGLE_QUOTE_CHAR);
-                    }
-                    string = out.append(SINGLE_QUOTE_CHAR);
-                } else
-                    string = String.valueOf(value);
-            }
-        }
-
-        public CharSequence registerAsParameter() {
-            return new StringBuilder().append(QUESTION_MARK_CHAR).append(registerParameter(value));
-        }
-
-        @Override
-        public int length() {
-            lazyInit();
-            return string.length();
-        }
-
-        @Override
-        public char charAt(int index) {
-            lazyInit();
-            return string.charAt(index);
-        }
-
-        @Override
-        public CharSequence subSequence(int start,
-                                        int end) {
-            lazyInit();
-            return string.subSequence(start, end);
-        }
-
-        @Override
-        public String toString() {
-            lazyInit();
-            return string.toString();
-        }
-    }
-
-    private StringBuilder registerParameter(Object value) {
+    StringBuilder registerParameter(Object value) {
         indexedParameters.add(value);
         int index = indexedParameters.size();
         StringBuilder name = new StringBuilder().append(index);
         parameterRefs.add(name);
         return name;
-    }
-
-    private static boolean isLambda(Object e) {
-        if (e instanceof LambdaExpression)
-            return true;
-
-        return e instanceof ConstantExpression && isLambda(((ConstantExpression) e).getValue());
     }
 
     @Override
@@ -597,14 +492,6 @@ final class DSLInterpreter
                 e);
     }
 
-    private static ParameterContext calculateContext(Context context,
-                                                     ParameterContext functionContext) {
-        if (context != null)
-            return context.value();
-
-        return functionContext == ParameterContext.INHERIT ? null : functionContext;
-    }
-
     private Function<CharSequence, CharSequence> setupParameterRenderingContext(ParameterContext newContext,
                                                                                 Function<CharSequence, CharSequence> parameterRenderer) {
 
@@ -622,16 +509,6 @@ final class DSLInterpreter
         };
     }
 
-    private static <T extends Annotation> T getAnnotation(Annotation[] annotations,
-                                                          Class<T> toFind) {
-        for (int i = 0; i < annotations.length; i++) {
-            Annotation a = annotations[i];
-            if (toFind.isAssignableFrom(a.getClass()))
-                return toFind.cast(a);
-        }
-        return null;
-    }
-
     private CharSequence resolveLabel(Map<CharSequence, CharSequence> aliases,
                                       CharSequence seq) {
         CharSequence label = aliases.get(seq);
@@ -639,13 +516,6 @@ final class DSLInterpreter
             return label;
 
         return SubQueryManager.isSubQuery(seq) ? SubQueryManager.getName(seq) : seq;
-    }
-
-    private static CharSequence verifyParentheses(CharSequence seq) {
-
-        return SubQueryManager.isSubQueryExpression(seq)
-                ? new StringBuilder(LEFT_PARAN).append(seq).append(RIGHT_PARAN)
-                : seq;
     }
 
     private Function<List<Expression>, Function<List<Expression>, Function<List<CharSequence>, Function<List<CharSequence>, CharSequence>>>> visitMemberExpression(MemberExpression e) {
@@ -886,11 +756,29 @@ final class DSLInterpreter
 
                     return pp -> {
 
+                        if (m.isAnnotationPresent(ViewDeclaration.Columns.class)) {
+                            View view = (View) instFinal;
+                            argsBuilder.add(ex -> p -> view.getColumns());
+                            out.setLength(0);
+                        }
+
+                        if (m.isAnnotationPresent(ViewDeclaration.Select.class)) {
+                            View view = (View) instFinal;
+                            argsBuilder.clear();
+                            argsBuilder.add(
+                                    ex -> p -> {
+                                        return p != null ? view.getSelect(resolveLabel(aliases, p)) : view.getSelect();
+                                    });
+                            out.setLength(0);
+                        }
+
+                        List<CharSequence> originalParams = pp;
+
                         CharSequence currentSubQuery = (cte != null
                                 && cte.value() == CommonTableExpressionType.DECORATOR) ? subQueries.sealName(pp.get(0))
                                 : null;
 
-                        if (instance != null) {
+                        if (instance != null && out.length() > 0) {
                             out.append(KEYWORD_DELIMITER_CHAR);
                         }
 
@@ -968,6 +856,10 @@ final class DSLInterpreter
                             aliases.put(out, implicitAlias);
                         }
 
+                        if (m.isAnnotationPresent(ViewDeclaration.class)) {
+                            return new View(out, (PackedInitializers) originalParams.get(1));
+                        }
+
                         return out;
                     };
 
@@ -1005,56 +897,6 @@ final class DSLInterpreter
                 };
             };
         };
-    }
-
-    private static List<CharSequence> expandVarArgs(List<CharSequence> pp) {
-        int lastIndex = pp.size() - 1;
-        if (lastIndex < 0)
-            return pp;
-
-        CharSequence last = pp.get(lastIndex);
-        if (!(last instanceof PackedInitializers))
-            return pp;
-
-        List<CharSequence> initializers = ((PackedInitializers) last).getInitializers();
-        if (lastIndex == 0)
-            return initializers;
-        return Streams.join(pp.subList(0, lastIndex), initializers);
-    }
-
-    private static List<CharSequence> expandVarArgs(List<CharSequence> pp,
-                                                    List<Function<Expression, Function<CharSequence, CharSequence>>> argsBuilder,
-                                                    List<Function<CharSequence, CharSequence>> argsBuilderBound) {
-        int lastIndex = pp.size() - 1;
-
-        CharSequence lastSeq = lastIndex < 0 ? null : pp.get(lastIndex);
-        if (!(lastSeq instanceof PackedInitializers)) {
-            argsBuilder.forEach(b -> argsBuilderBound.add(b.apply(null)));
-            return pp;
-        }
-        PackedInitializers packed = (PackedInitializers) lastSeq;
-        List<CharSequence> initializers = packed.getInitializers();
-        pp = new ArrayList<>(pp);
-        pp.remove(lastIndex);
-        pp.addAll(initializers);
-
-        for (int i = 0; i < lastIndex; i++)
-            argsBuilderBound.add(argsBuilder.get(i).apply(null));
-
-        Function<Expression, Function<CharSequence, CharSequence>> varargsBuilder = argsBuilder.get(lastIndex);
-        for (int i = 0; i < initializers.size(); i++)
-            argsBuilderBound.add(varargsBuilder.apply(packed.getExpressions().get(i)));
-
-        return pp;
-    }
-
-    private static CharSequence extractColumnName(CharSequence expression) {
-        int dotIndex = Strings.lastIndexOf(expression, DOT_CHAR);
-        if (dotIndex >= 0)
-            expression = expression.subSequence(dotIndex + 1, expression.length());
-        if (expression.charAt(0) == SINGLE_QUOTE_CHAR)
-            expression = expression.subSequence(1, expression.length() - 1); // remove quotes coming from constant
-        return expression;
     }
 
     // terminal function
@@ -1257,35 +1099,6 @@ final class DSLInterpreter
         };
     }
 
-    @RequiredArgsConstructor
-    @Getter
-    private final static class PackedInitializers implements CharSequence {
-
-        private final List<Expression> expressions;
-        private final List<CharSequence> initializers;
-
-        @Override
-        public int length() {
-            throw new IllegalStateException();
-        }
-
-        @Override
-        public char charAt(int index) {
-            throw new IllegalStateException();
-        }
-
-        @Override
-        public CharSequence subSequence(int start,
-                                        int end) {
-            throw new IllegalStateException();
-        }
-
-        @Override
-        public String toString() {
-            throw new IllegalStateException();
-        }
-    }
-
     @Override
     public Function<List<Expression>, Function<List<CharSequence>, CharSequence>> visit(NewArrayInitExpression e) {
 
@@ -1301,38 +1114,7 @@ final class DSLInterpreter
 
             List<Expression> curArgs = bind(allArgs, eargs);
 
-            return t -> {
-                List<CharSequence> collected = ppe.stream().map(pe -> pe.apply(t)).collect(Collectors.toList());
-
-                return new PackedInitializers(curArgs, collected);
-            };
+            return t -> new PackedInitializers(curArgs, ppe, t);
         };
-    }
-
-    @Getter
-    @RequiredArgsConstructor
-    private static final class RequiresParenthesesInAS implements CharSequence {
-        private final CharSequence wrapped;
-
-        @Override
-        public int length() {
-            return wrapped.length();
-        }
-
-        @Override
-        public char charAt(int index) {
-            return wrapped.charAt(index);
-        }
-
-        @Override
-        public CharSequence subSequence(int start,
-                                        int end) {
-            return wrapped.subSequence(start, end);
-        }
-
-        @Override
-        public String toString() {
-            return wrapped.toString();
-        }
     }
 }

@@ -547,18 +547,23 @@ final class JPAHelpers {
 
         String original = m.getName();
 
-        String name = decapitalize(getFieldName(m));
+        String name = getFieldName(m);
+        String decapitalized = decapitalize(name);
         Class<?> clazz = m.getDeclaringClass();
         for (;;) {
             try {
-                return clazz.getDeclaredField(name);
+                return clazz.getDeclaredField(decapitalized);
             } catch (NoSuchFieldException e) {
                 try {
-                    return clazz.getDeclaredField(original);
+                    return clazz.getDeclaredField(name);
                 } catch (NoSuchFieldException e1) {
-                    clazz = clazz.getSuperclass();
-                    if (clazz == Object.class || clazz == null)
-                        throw TranslationError.UNMAPPED_FIELD.getError(e1, original);
+                    try {
+                        return clazz.getDeclaredField(original);
+                    } catch (NoSuchFieldException e2) {
+                        clazz = clazz.getSuperclass();
+                        if (clazz == Object.class || clazz == null)
+                            throw TranslationError.UNMAPPED_FIELD.getError(e2, original);
+                    }
                 }
             }
         }

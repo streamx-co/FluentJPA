@@ -7,6 +7,7 @@ import static co.streamx.fluent.SQL.Directives.alias;
 import static co.streamx.fluent.SQL.Directives.parameter;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Library.pick;
+import static co.streamx.fluent.SQL.Library.selectAll;
 import static co.streamx.fluent.SQL.MySQL.SQL.GROUP_CONCAT;
 import static co.streamx.fluent.SQL.MySQL.SQL.STR_TO_DATE;
 import static co.streamx.fluent.SQL.Operators.BETWEEN;
@@ -21,6 +22,7 @@ import static co.streamx.fluent.SQL.SQL.PARTITION;
 import static co.streamx.fluent.SQL.SQL.SELECT;
 import static co.streamx.fluent.SQL.SQL.UPDATE;
 import static co.streamx.fluent.SQL.SQL.WHERE;
+import static co.streamx.fluent.SQL.SQL.WITH;
 import static co.streamx.fluent.SQL.ScalarFunctions.CASE;
 import static co.streamx.fluent.SQL.ScalarFunctions.CURRENT_DATE;
 import static co.streamx.fluent.SQL.ScalarFunctions.WHEN;
@@ -139,24 +141,37 @@ public class StackOverflow implements CommonTest {
         private Date updatedDate;
     }
 
+    @Tuple
+    @Getter
+    public static class RankedPriceTag extends PriceTag {
+        private long rowNumber;
+    }
+
     @Test
     // https://stackoverflow.com/questions/57351634/is-there-a-way-to-get-the-latest-entry-that-is-less-or-equal-to-the-current-time
     public void latestEntry() {
 
-        FluentQuery query = FluentJPA.SQL((PriceTag tag) -> {
+        FluentQuery query = FluentJPA.SQL(() -> {
 
-            Long rowNumber = aggregateBy(ROW_NUMBER())
-                    .OVER(PARTITION(BY(tag.getGoodsId())).ORDER(BY(tag.getUpdatedDate()).DESC()))
-                    .AS();
+            RankedPriceTag ranked = subQuery((PriceTag tag) -> {
+                Long rowNumber = aggregateBy(ROW_NUMBER())
+                        .OVER(PARTITION(BY(tag.getGoodsId())).ORDER(BY(tag.getUpdatedDate()).DESC()))
+                        .AS(RankedPriceTag::getRowNumber);
 
-            SELECT(tag);
-            FROM(tag);
-            WHERE(lessEqual(tag.getUpdatedDate(), CURRENT_DATE()) && rowNumber == 1);
+                SELECT(tag, rowNumber);
+                FROM(tag);
+            });
+
+            WITH(ranked);
+            selectAll(ranked);
+            WHERE(lessEqual(ranked.getUpdatedDate(), CURRENT_DATE()) && ranked.getRowNumber() == 1);
 
         });
 
-        String expected = "SELECT t0.* " + "FROM PriceTags t0 "
-                + "WHERE ((t0.updated_date <= CURRENT_DATE   ) AND ( ROW_NUMBER()  OVER(PARTITION BY  t0.goods_id   ORDER BY  t0.updated_date  DESC   ) = 1))";
+        String expected = "WITH q0 AS "
+                + "(SELECT t0.*,  ROW_NUMBER()  OVER(PARTITION BY  t0.goods_id   ORDER BY  t0.updated_date  DESC   ) AS row_number "
+                + "FROM PriceTags t0 ) " + "SELECT q0.* " + "FROM q0 "
+                + "WHERE ((q0.updated_date <= CURRENT_DATE   ) AND (q0.row_number = 1))";
 
         assertQuery(query, expected);
     }

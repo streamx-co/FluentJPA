@@ -3,7 +3,8 @@ package co.streamx.fluent.JPA;
 interface Strings {
 
     static boolean isNullOrEmpty(CharSequence seq) {
-        return seq == null || seq.length() == 0;
+        return seq == null
+                || (seq instanceof UnboundCharSequence ? ((UnboundCharSequence) seq).isEmpty() : seq.length() == 0);
     }
 
     static boolean equals(CharSequence source,

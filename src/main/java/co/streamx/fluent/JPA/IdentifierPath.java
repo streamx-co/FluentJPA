@@ -4,7 +4,7 @@ import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 
-interface IdentifierPath extends CharSequence {
+interface IdentifierPath extends UnboundCharSequence {
     CharSequence resolveInstance(CharSequence inst);
 
     CharSequence resolve(IdentifierPath path);
@@ -19,6 +19,11 @@ interface IdentifierPath extends CharSequence {
 
     public static boolean isResolved(CharSequence seq) {
         return seq instanceof Resolved;
+    }
+
+    @Override
+    default boolean isEmpty() {
+        return false;
     }
 
     @RequiredArgsConstructor
@@ -43,6 +48,8 @@ interface IdentifierPath extends CharSequence {
 
         @Override
         public CharSequence resolveInstance(CharSequence inst) {
+            if (Strings.isNullOrEmpty(inst))
+                return this;
             if (inst instanceof IdentifierPath)
                 return ((IdentifierPath) inst).resolve(this);
             return new Resolved(new StringBuilder(inst).append(DOT).append(resolution).toString());

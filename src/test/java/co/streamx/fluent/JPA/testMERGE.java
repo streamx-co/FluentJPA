@@ -2,6 +2,7 @@ package co.streamx.fluent.JPA;
 
 import static co.streamx.fluent.SQL.AggregateFunctions.SUM;
 import static co.streamx.fluent.SQL.Directives.alias;
+import static co.streamx.fluent.SQL.Directives.comment;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Directives.viewOf;
 import static co.streamx.fluent.SQL.Oracle.SQL.LOG_ERRORS;
@@ -43,6 +44,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import co.streamx.fluent.SQL.Alias;
+import co.streamx.fluent.SQL.View;
 import co.streamx.fluent.SQL.TransactSQL.MergeAction;
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
@@ -257,8 +259,8 @@ public class testMERGE implements CommonTest {
             });
 
             WHEN_NOT_MATCHED().THEN(() -> {
-                MERGE_INSERT(bonus.getEmployee(), bonus.getBonus());
-                VALUES(row(empFromDep80.getId(), empFromDep80.getSalary() * .01f));
+                MERGE_INSERT(viewOf(bonus, Bonus::getEmployee, Bonus::getBonus).select(),
+                        (Bonus) VALUES(row(empFromDep80.getId(), empFromDep80.getSalary() * .01f)));
                 WHERE(empFromDep80.getSalary() <= threshold);
             });
         });
@@ -282,12 +284,11 @@ public class testMERGE implements CommonTest {
     @Test
     public void testSyntax() throws Exception {
         FluentQuery query = FluentJPA.SQL((ErrLog errlog) -> {
-            MERGE_INSERT();
             LOG_ERRORS().INTO(errlog).TAG("My bad: " + TO_CHAR(SYSDATE()));
             REJECT_LIMIT(UNLIMITED());
         });
 
-        String expected = "INSERT  " + "LOG ERRORS   INTO errlog  ( CONCAT( 'My bad: ' ,  TO_CHAR(SYSDATE  ) ) )"
+        String expected = "LOG ERRORS   INTO errlog  ( CONCAT( 'My bad: ' ,  TO_CHAR(SYSDATE  ) ) )"
                 + "REJECT LIMIT UNLIMITED";
 
         try {
@@ -296,5 +297,49 @@ public class testMERGE implements CommonTest {
             expected = "INSERT LOG ERRORS INTO errlog ( CONCAT( CONCAT( '' , 'My bad: ' ) , TO_CHAR(SYSDATE ) ) )REJECT LIMIT UNLIMITED";
             assertQuery(query, expected);
         }
+    }
+
+    @Tuple
+    @Table(name = "member_topic")
+    @Data
+    public static class MemberTopic /* implements Record3<Integer, Integer, String> */ {
+        private int Member;
+        private int topic;
+        private String notes;
+    }
+
+    @Test
+    public void testUpsert() throws Exception {
+        FluentQuery query = FluentJPA.SQL((MemberTopic target) -> {
+
+            MemberTopic values = (MemberTopic) VALUES(row(0, 110, "test"));
+
+            View<MemberTopic> source = viewOf(values, MemberTopic::getMember, MemberTopic::getTopic,
+                    MemberTopic::getNotes);
+
+            MERGE().INTO(target)
+                    .USING(source)
+                    .ON(target.getMember() == values.getMember() && target.getTopic() == values.getTopic());
+
+            WHEN_MATCHED().THEN(() -> {
+                MERGE_UPDATE().SET(() -> {
+                    target.setNotes(values.getNotes());
+                });
+            });
+
+            WHEN_NOT_MATCHED().THEN(MERGE_INSERT(source.columnNames(), VALUES(source.select())));
+
+            comment(VALUES(source.select(values)));
+            comment(VALUES(source.select(target)));
+
+        });
+
+        String expected = "MERGE   INTO member_topic AS t0  USING  (VALUES (0, 110, 'test') ) AS t1 (member, topic, notes)   ON ((t0.member = t1.member) AND (t0.topic = t1.topic)) "
+                + "WHEN MATCHED   THEN UPDATE   SET notes = t1.notes  "
+                + "WHEN NOT MATCHED   THEN INSERT (member, topic, notes) VALUES (t1.member, t1.topic, t1.notes)   "
+                + "-- VALUES (t1.member, t1.topic, t1.notes)  " + "-- VALUES (t0.member, t0.topic, t0.notes)";
+
+        assertQuery(query, expected);
+
     }
 }
