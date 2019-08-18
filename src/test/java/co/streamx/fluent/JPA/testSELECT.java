@@ -27,6 +27,8 @@ import static co.streamx.fluent.SQL.SQL.SELECT;
 import static co.streamx.fluent.SQL.SQL.WHERE;
 import static co.streamx.fluent.SQL.SQL.WITH;
 import static co.streamx.fluent.SQL.SQL.row;
+import static co.streamx.fluent.SQL.TransactSQL.SQL.NEXT_VALUE_FOR;
+import static co.streamx.fluent.SQL.TransactSQL.SQL.sequence;
 
 import javax.persistence.Column;
 import javax.persistence.Id;
@@ -37,6 +39,7 @@ import javax.persistence.Table;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import co.streamx.fluent.SQL.TransactSQL.Sequence;
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
 import lombok.Getter;
@@ -314,6 +317,24 @@ public class testSELECT implements CommonTest {
         String expected = "SELECT t0.department_id, t1.last_name "
                 + "FROM hr.departments t0  FULL OUTER JOIN hr.employees t1  USING(department_id)"
                 + "ORDER BY  t0.department_id ,  t1.last_name";
+
+        assertQuery(query, expected);
+    }
+
+    public static final Sequence<Long> staticSequence = sequence("static");
+
+    @Test
+    public void testSequnce() throws Exception {
+
+        FluentQuery query = FluentJPA.SQL(() -> {
+
+            Sequence<Integer> sequence = sequence("myseq");
+            Integer nextval = NEXT_VALUE_FOR(sequence).AS("X");
+
+            SELECT(nextval, NEXT_VALUE_FOR(staticSequence).AS());
+        });
+
+        String expected = "SELECT NEXT VALUE FOR myseq  AS X, NEXT VALUE FOR static";
 
         assertQuery(query, expected);
     }

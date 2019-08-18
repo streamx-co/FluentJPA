@@ -10,6 +10,7 @@ import static co.streamx.fluent.SQL.Oracle.SQL.MULTISET_UNION;
 import static co.streamx.fluent.SQL.Oracle.SQL.ROUND;
 import static co.streamx.fluent.SQL.Oracle.SQL.TO_DATE;
 import static co.streamx.fluent.SQL.Oracle.SQL.TRUNC;
+import static co.streamx.fluent.SQL.Oracle.SQL.sequence;
 import static co.streamx.fluent.SQL.PostgreSQL.SQL.LIMIT;
 import static co.streamx.fluent.SQL.SQL.BY;
 import static co.streamx.fluent.SQL.SQL.DISTINCT;
@@ -43,6 +44,7 @@ import co.streamx.fluent.SQL.TestSQLAggregates.Houshold;
 import co.streamx.fluent.SQL.Oracle.Format;
 import co.streamx.fluent.SQL.Oracle.FormatModel;
 import co.streamx.fluent.SQL.Oracle.Ignore;
+import co.streamx.fluent.SQL.Oracle.Sequence;
 import co.streamx.fluent.SQL.TransactSQL.DataTypeNames;
 import co.streamx.fluent.SQL.TransactSQL.DataTypes;
 import co.streamx.fluent.SQL.TransactSQL.HashingAlgorithm;
@@ -88,6 +90,26 @@ public class GrammarTest implements CommonTest {
 
         String expected = "SELECT ROUND(TO_DATE('27-OCT-00'), 'YEAR'), TRUNC(TO_DATE('27-OCT-92'), 'DD-MON-YY') "
                 + "FROM DUAL";
+
+        String sql = query.toString();
+        System.out.println(sql);
+        assertEquals(expected, sql.replace("\n", ""));
+    }
+
+    public static final Sequence<Long> staticSequence = sequence("static");
+
+    @Test
+    public void testSequnce() throws Exception {
+
+        FluentQuery query = FluentJPA.SQL(() -> {
+
+            Sequence<Integer> sequence = sequence("myseq");
+            Integer nextval = sequence.NEXTVAL();
+            SELECT(nextval, staticSequence.NEXTVAL());
+            FROM(DUAL());
+        });
+
+        String expected = "SELECT myseq. NEXTVAL  , static. NEXTVAL   " + "FROM DUAL";
 
         String sql = query.toString();
         System.out.println(sql);
