@@ -9,6 +9,7 @@ import static co.streamx.fluent.SQL.Directives.alias;
 import static co.streamx.fluent.SQL.Directives.recurseOn;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Directives.viewOf;
+import static co.streamx.fluent.SQL.MySQL.SQL.ON_DUPLICATE_KEY_UPDATE;
 import static co.streamx.fluent.SQL.Operators.IN;
 import static co.streamx.fluent.SQL.Operators.UNION_ALL;
 import static co.streamx.fluent.SQL.Operators.less;
@@ -512,7 +513,7 @@ public class TestSQL implements CommonTest {
         assertQuery(query, expected);
     }
 
-    @Getter
+    @Data
     @Entity
     public static class Films {
         private String code;
@@ -532,10 +533,14 @@ public class TestSQL implements CommonTest {
             INSERT(Modifier.IGNORE).
             INTO(f);
             VALUES(row("UA502", "Bananas", 105, "1971-07-13", DEFAULT(), "82 minutes"));
+            ON_DUPLICATE_KEY_UPDATE(() -> {
+                f.setTitle(f.getTitle() + "-dup!");
+            });
         });
 
         String expected = "INSERT IGNORE  INTO Films AS t0 "
-                + "VALUES ('UA502', 'Bananas', 105, '1971-07-13', DEFAULT  , '82 minutes')";
+                + "VALUES ('UA502', 'Bananas', 105, '1971-07-13', DEFAULT  , '82 minutes')"
+                + "ON DUPLICATE KEY UPDATE title =  CONCAT(  t0.title  ,  '-dup!' )";
 
         assertQuery(query, expected);
     }

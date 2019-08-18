@@ -155,7 +155,11 @@ interface DSLInterpreterHelpers {
 
         public CharSequence getColumn(int i) {
             getColumns();
-            return allColumns.get(i);
+            try {
+                return allColumns.get(i);
+            } catch (IndexOutOfBoundsException ioobe) {
+                throw TranslationError.ALIAS_NOT_SPECIFIED.getError(ioobe, i);
+            }
         }
 
         public CharSequence getColumns() {

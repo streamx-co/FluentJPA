@@ -7,10 +7,15 @@ import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Directives.viewOf;
 import static co.streamx.fluent.SQL.Oracle.SQL.DUAL;
 import static co.streamx.fluent.SQL.Oracle.SQL.LOG_ERRORS;
+import static co.streamx.fluent.SQL.Oracle.SQL.MERGE;
+import static co.streamx.fluent.SQL.Oracle.SQL.MERGE_INSERT;
+import static co.streamx.fluent.SQL.Oracle.SQL.MERGE_UPDATE;
 import static co.streamx.fluent.SQL.Oracle.SQL.REJECT_LIMIT;
 import static co.streamx.fluent.SQL.Oracle.SQL.SYSDATE;
 import static co.streamx.fluent.SQL.Oracle.SQL.TO_CHAR;
 import static co.streamx.fluent.SQL.Oracle.SQL.UNLIMITED;
+import static co.streamx.fluent.SQL.Oracle.SQL.WHEN_MATCHED;
+import static co.streamx.fluent.SQL.Oracle.SQL.WHEN_NOT_MATCHED;
 import static co.streamx.fluent.SQL.SQL.BY;
 import static co.streamx.fluent.SQL.SQL.DELETE;
 import static co.streamx.fluent.SQL.SQL.FROM;
@@ -23,13 +28,8 @@ import static co.streamx.fluent.SQL.SQL.row;
 import static co.streamx.fluent.SQL.TransactSQL.SQL.$action;
 import static co.streamx.fluent.SQL.TransactSQL.SQL.DELETED;
 import static co.streamx.fluent.SQL.TransactSQL.SQL.GETDATE;
-import static co.streamx.fluent.SQL.TransactSQL.SQL.MERGE;
-import static co.streamx.fluent.SQL.TransactSQL.SQL.MERGE_INSERT;
-import static co.streamx.fluent.SQL.TransactSQL.SQL.MERGE_UPDATE;
 import static co.streamx.fluent.SQL.TransactSQL.SQL.OUTPUT;
-import static co.streamx.fluent.SQL.TransactSQL.SQL.WHEN_MATCHED;
 import static co.streamx.fluent.SQL.TransactSQL.SQL.WHEN_MATCHED_AND;
-import static co.streamx.fluent.SQL.TransactSQL.SQL.WHEN_NOT_MATCHED;
 import static co.streamx.fluent.SQL.TransactSQL.SQL.registerVendorCapabilities;
 
 import java.util.Date;
@@ -315,11 +315,14 @@ public class testMERGE implements CommonTest {
 
             MemberTopic values = (MemberTopic) VALUES(row(0, 110, "test"));
 
+            // in SQL Server source is a view (i.e. column declaration comes after alias)
             View<MemberTopic> source = viewOf(values, MemberTopic::getMember, MemberTopic::getTopic,
                     MemberTopic::getNotes);
 
+            // match new record with existing
             MERGE().INTO(target)
                     .USING(source)
+                    // matching criteria
                     .ON(target.getMember() == values.getMember() && target.getTopic() == values.getTopic());
 
             WHEN_MATCHED().THEN(() -> {
@@ -345,22 +348,64 @@ public class testMERGE implements CommonTest {
     }
 
     @Test
+    public void testUpsertSQL2() throws Exception {
+        FluentQuery query = FluentJPA.SQL((MemberTopic target) -> {
+
+            // view is used for INSERT and alias
+            View<MemberTopic> targetView = viewOf(target, MemberTopic::getMember, MemberTopic::getTopic,
+                    MemberTopic::getNotes);
+
+            // source is a sub query
+            MemberTopic source = subQuery(() -> {
+                // alias values in the view order
+                SELECT(targetView.alias(0, 110, "test"));
+            });
+
+            // match new record with existing
+            MERGE().INTO(target)
+                    .USING(source)
+                    // matching criteria
+                    .ON(target.getMember() == source.getMember() && target.getTopic() == source.getTopic());
+
+            WHEN_MATCHED().THEN(() -> {
+                MERGE_UPDATE().SET(() -> {
+                    target.setNotes(source.getNotes());
+                });
+            });
+
+            WHEN_NOT_MATCHED().THEN(MERGE_INSERT(targetView.columnNames(), VALUES(targetView.from(source))));
+
+        });
+
+        String expected = "MERGE   INTO member_topic AS t0  USING (SELECT  0 AS member, 110 AS topic, 'test' AS notes  ) AS q0  ON ((t0.member = q0.member) AND (t0.topic = q0.topic)) "
+                + "WHEN MATCHED   THEN UPDATE   SET notes = q0.notes  "
+                + "WHEN NOT MATCHED   THEN INSERT (member, topic, notes) VALUES (q0.member, q0.topic, q0.notes)";
+
+        assertQuery(query, expected);
+
+    }
+
+    @Test
     public void testUpsertOracle() throws Exception {
 
         co.streamx.fluent.SQL.Oracle.SQL.registerVendorCapabilities(FluentJPA::setCapabilities);
 
         FluentQuery query = FluentJPA.SQL((MemberTopic target) -> {
 
+            // view is used for INSERT and alias
             View<MemberTopic> targetView = viewOf(target, MemberTopic::getMember, MemberTopic::getTopic,
                     MemberTopic::getNotes);
 
+            // source is a sub query
             MemberTopic source = subQuery(() -> {
                 SELECT(targetView.alias(0, 110, "test"));
-                FROM(DUAL());
+                FROM(DUAL()); // Must be in Oracle
             });
 
+            // match new record with existing
             MERGE().INTO(target)
                     .USING(source)
+                    // matching criteria
                     .ON(target.getMember() == source.getMember() && target.getTopic() == source.getTopic());
 
             WHEN_MATCHED().THEN(() -> {
