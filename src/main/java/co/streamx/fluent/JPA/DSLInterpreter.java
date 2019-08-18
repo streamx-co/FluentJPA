@@ -103,6 +103,9 @@ final class DSLInterpreter
     private Map<CharSequence, Member> joinTablesForFROM = Collections.emptyMap();
     private Map<ParameterExpression, ParameterExpression> parameterBackwardMap = new HashMap<>();
 
+    // View
+    private Map<CharSequence, View> views = Collections.emptyMap();
+
     @Getter
     private List<Object> indexedParameters = new ArrayList<>();
 
@@ -704,9 +707,11 @@ final class DSLInterpreter
 
                 StringBuilder out = new StringBuilder();
                 CharSequence instMutating = null;
+                CharSequence originalInst;
                 if (instance != null) {
                     // the table definition must come from JOIN clause
                     CharSequence inst = instance.apply(ipp);
+                    originalInst = inst;
 
                     if (tableJoin != null) {
                         CharSequence lseq = inst;
@@ -736,6 +741,8 @@ final class DSLInterpreter
                         out.append(IdentifierPath.current(inst));
                         instMutating = inst;
                     }
+                } else {
+                    originalInst = null;
                 }
 
                 CharSequence instFinal = instMutating;
@@ -757,13 +764,13 @@ final class DSLInterpreter
                     return pp -> {
 
                         if (m.isAnnotationPresent(ViewDeclaration.Columns.class)) {
-                            View view = (View) instFinal;
+                            View view = views.get(originalInst);
                             argsBuilder.add(ex -> p -> view.getColumns());
                             out.setLength(0);
                         }
 
-                        if (m.isAnnotationPresent(ViewDeclaration.Select.class)) {
-                            View view = (View) instFinal;
+                        if (m.isAnnotationPresent(ViewDeclaration.From.class)) {
+                            View view = views.get(originalInst);
                             argsBuilder.clear();
                             argsBuilder.add(
                                     ex -> p -> {
@@ -776,7 +783,7 @@ final class DSLInterpreter
 
                         CharSequence currentSubQuery = (cte != null
                                 && cte.value() == CommonTableExpressionType.DECORATOR) ? subQueries.sealName(pp.get(0))
-                                : null;
+                                        : null;
 
                         if (instance != null && out.length() > 0) {
                             out.append(KEYWORD_DELIMITER_CHAR);
@@ -784,6 +791,20 @@ final class DSLInterpreter
 
                         List<Function<CharSequence, CharSequence>> argsBuilderBound = new ArrayList<>();
                         pp = expandVarArgs(pp, argsBuilder, argsBuilderBound);
+
+                        if (m.isAnnotationPresent(ViewDeclaration.Alias.class)) {
+                            View view = views.get(originalInst);
+                            argsBuilderBound.clear();
+
+                            for (int i = 0; i < pp.size(); i++) {
+                                int ip = i;
+                                argsBuilderBound
+                                        .add(p -> new StringBuilder(p).append(SEP_AS_SEP).append(view.getColumn(ip)));
+                            }
+
+                            out.setLength(0);
+                        }
+
 
                         Stream<CharSequence> args = Streams.zip(pp, argsBuilderBound, (arg,
                                                                                        builder) -> builder.apply(arg));
@@ -842,7 +863,7 @@ final class DSLInterpreter
                         args.close();
 
                         if (currentSubQuery != null) // decorator is optional
-                            return subQueries.put(out, currentSubQuery);
+                            return handleView(subQueries.put(out, currentSubQuery), m, originalParams);
 
                         if (function.requiresAlias()) {
                             StringBuilder implicitAlias = new StringBuilder(TABLE_ALIAS_PREFIX)
@@ -856,11 +877,7 @@ final class DSLInterpreter
                             aliases.put(out, implicitAlias);
                         }
 
-                        if (m.isAnnotationPresent(ViewDeclaration.class)) {
-                            return new View(out, (PackedInitializers) originalParams.get(1));
-                        }
-
-                        return out;
+                        return handleView(out, m, originalParams);
                     };
 
                 }
@@ -897,6 +914,19 @@ final class DSLInterpreter
                 };
             };
         };
+    }
+
+    private CharSequence handleView(CharSequence result,
+                                           final Method m,
+                                           List<CharSequence> originalParams) {
+        if (m.isAnnotationPresent(ViewDeclaration.class)) {
+            if (views.isEmpty())
+                views = new HashMap<>();
+
+            views.put(result, new View((PackedInitializers) originalParams.get(1)));
+        }
+
+        return result;
     }
 
     // terminal function
@@ -956,6 +986,7 @@ final class DSLInterpreter
         if (tableName != null) {
             if (renderingContext == ParameterContext.FROM
                     || (renderingContext == ParameterContext.FROM_WITHOUT_ALIAS && hasLabel)) {
+                undeclaredAliases.remove(label);
                 StringBuilder fromBuilder = new StringBuilder(tableName);
                 fromBuilder.append(capabilities.contains(Capability.TABLE_AS_ALIAS) ? SEP_AS_SEP : KEYWORD_DELIMITER);
                 return fromBuilder.append(label);

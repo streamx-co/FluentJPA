@@ -145,21 +145,24 @@ interface DSLInterpreterHelpers {
     }
 
     @Getter
-    final class View extends Wrapped {
-        public View(CharSequence wrapped, PackedInitializers packed) {
-            super(wrapped);
-            this.packed = packed;
-        }
+    @RequiredArgsConstructor
+    final class View {
 
         private final PackedInitializers packed;
         private CharSequence columns;
+        private List<CharSequence> allColumns;
         private CharSequence selfSelect;
+
+        public CharSequence getColumn(int i) {
+            getColumns();
+            return allColumns.get(i);
+        }
 
         public CharSequence getColumns() {
             if (this.columns != null)
                 return this.columns;
-            List<CharSequence> columns = packed.getInitializers("");
-            return this.columns = join(columns);
+            allColumns = packed.getInitializers("");
+            return this.columns = join(allColumns);
         }
 
         private static String join(List<CharSequence> columns) {
@@ -176,10 +179,6 @@ interface DSLInterpreterHelpers {
             return join(packed.getInitializers(seq));
         }
 
-        @Override
-        public boolean isEmpty() {
-            return false;
-        }
     }
 
     @Getter

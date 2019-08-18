@@ -5,6 +5,7 @@ import static co.streamx.fluent.SQL.Directives.alias;
 import static co.streamx.fluent.SQL.Directives.comment;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Directives.viewOf;
+import static co.streamx.fluent.SQL.Oracle.SQL.DUAL;
 import static co.streamx.fluent.SQL.Oracle.SQL.LOG_ERRORS;
 import static co.streamx.fluent.SQL.Oracle.SQL.REJECT_LIMIT;
 import static co.streamx.fluent.SQL.Oracle.SQL.SYSDATE;
@@ -40,7 +41,7 @@ import javax.persistence.ManyToOne;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
 
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import co.streamx.fluent.SQL.Alias;
@@ -52,8 +53,8 @@ import lombok.Getter;
 
 public class testMERGE implements CommonTest {
 
-    @BeforeAll
-    public static void init() {
+    @BeforeEach
+    public void init() {
         registerVendorCapabilities(FluentJPA::setCapabilities);
     }
 
@@ -259,7 +260,7 @@ public class testMERGE implements CommonTest {
             });
 
             WHEN_NOT_MATCHED().THEN(() -> {
-                MERGE_INSERT(viewOf(bonus, Bonus::getEmployee, Bonus::getBonus).select(),
+                MERGE_INSERT(viewOf(bonus, Bonus::getEmployee, Bonus::getBonus).from(),
                         (Bonus) VALUES(row(empFromDep80.getId(), empFromDep80.getSalary() * .01f)));
                 WHERE(empFromDep80.getSalary() <= threshold);
             });
@@ -327,10 +328,10 @@ public class testMERGE implements CommonTest {
                 });
             });
 
-            WHEN_NOT_MATCHED().THEN(MERGE_INSERT(source.columnNames(), VALUES(source.select())));
+            WHEN_NOT_MATCHED().THEN(MERGE_INSERT(source.columnNames(), VALUES(source.from())));
 
-            comment(VALUES(source.select(values)));
-            comment(VALUES(source.select(target)));
+            comment(VALUES(source.from(values)));
+            comment(VALUES(source.from(target)));
 
         });
 
@@ -338,6 +339,44 @@ public class testMERGE implements CommonTest {
                 + "WHEN MATCHED   THEN UPDATE   SET notes = t1.notes  "
                 + "WHEN NOT MATCHED   THEN INSERT (member, topic, notes) VALUES (t1.member, t1.topic, t1.notes)   "
                 + "-- VALUES (t1.member, t1.topic, t1.notes)  " + "-- VALUES (t0.member, t0.topic, t0.notes)";
+
+        assertQuery(query, expected);
+
+    }
+
+    @Test
+    public void testUpsertOracle() throws Exception {
+
+        co.streamx.fluent.SQL.Oracle.SQL.registerVendorCapabilities(FluentJPA::setCapabilities);
+
+        FluentQuery query = FluentJPA.SQL((MemberTopic target) -> {
+
+            View<MemberTopic> targetView = viewOf(target, MemberTopic::getMember, MemberTopic::getTopic,
+                    MemberTopic::getNotes);
+
+            MemberTopic source = subQuery(() -> {
+                SELECT(targetView.alias(0, 110, "test"));
+                FROM(DUAL());
+            });
+
+            MERGE().INTO(target)
+                    .USING(source)
+                    .ON(target.getMember() == source.getMember() && target.getTopic() == source.getTopic());
+
+            WHEN_MATCHED().THEN(() -> {
+                MERGE_UPDATE().SET(() -> {
+                    target.setNotes(source.getNotes());
+                });
+            });
+
+            WHEN_NOT_MATCHED().THEN(MERGE_INSERT(targetView.columnNames(), VALUES(targetView.from(source))));
+
+        });
+
+        String expected = "MERGE   INTO member_topic t0  USING (SELECT  0 AS member, 110 AS topic, 'test' AS notes  "
+                + "FROM DUAL   ) q0  ON ((t0.member = q0.member) AND (t0.topic = q0.topic)) "
+                + "WHEN MATCHED   THEN UPDATE   SET notes = q0.notes  "
+                + "WHEN NOT MATCHED   THEN INSERT (member, topic, notes) VALUES (q0.member, q0.topic, q0.notes)";
 
         assertQuery(query, expected);
 
