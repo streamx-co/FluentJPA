@@ -200,9 +200,9 @@ FluentQuery query = FluentJPA.SQL((UtilizationDTL util,
                                    CoverageMaster coverMaster) -> {
     SELECT(DISTINCT(util.getId()));
     FROM(util).JOIN(utilizationCover)
-            .ON(utilizationCover.getUtilization() == util)
-            .JOIN(coverMaster)
-            .ON(utilizationCover.getMaster() == coverMaster);
+              .ON(utilizationCover.getUtilization() == util)
+              .JOIN(coverMaster)
+              .ON(utilizationCover.getMaster() == coverMaster);
 
     WHERE(dynamicFilter.apply(coverMaster) && util.isCompleted());
       //  ^^^^^^^^^^^^^^^^^^^--- inject the criteria,
