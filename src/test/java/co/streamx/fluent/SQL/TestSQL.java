@@ -558,6 +558,24 @@ public class TestSQL implements CommonTest {
     }
 
     @Test
+    public void testInsertWithEntity() throws Exception {
+
+        Films fx = new Films();
+        fx.setDid(105);
+        fx.setTitle("Bananas");
+
+        FluentQuery query = FluentJPA.SQL((Films f) -> {
+            View<Films> viewOfFilms = viewOf(f, Films::getTitle, Films::getDid);
+            INSERT().INTO(viewOfFilms);
+            VALUES(viewOfFilms.from(fx));
+        });
+
+        String expected = "INSERT   INTO  Films AS t0 (title, did)  " + "VALUES (?1, ?2)";
+
+        assertQuery(query, expected, new Object[] { fx.getTitle(), fx.getDid() });
+    }
+
+    @Test
     public void testInsertDefaultValues() throws Exception {
         FluentQuery query = FluentJPA.SQL((Films f) -> {
             INSERT().INTO(f);

@@ -46,6 +46,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import co.streamx.fluent.JPA.repository.entities.postgresqltutorial.T1;
+import co.streamx.fluent.SQL.View;
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
 
@@ -431,14 +432,19 @@ public class PGTutorial implements CommonTest, PGtutorialTypes {
                 + "VALUES ('http://www.facebook.com', 'Facebook', DATE  '2013-06-01' )";
         assertQuery(query, expected);
 
+        Link toInsert = new Link();
+        toInsert.setUrl("https://www.tumblr.com/");
+        toInsert.setName("Tumblr");
+
         query = FluentJPA.SQL((Link link) -> {
 
-            INSERT().INTO(viewOf(link, Link::getUrl, Link::getName, Link::getLastUpdate));
-            VALUES(row("https://www.tumblr.com/", "Tumblr", DEFAULT()));
+            View<Link> viewOfLink = viewOf(link, Link::getUrl, Link::getName, Link::getLastUpdate);
+            INSERT().INTO(viewOfLink);
+            VALUES(viewOfLink.from(toInsert, DEFAULT()));
         });
 
         expected = "INSERT   INTO  link AS t0 (url, name, last_update)  "
-                + "VALUES ('https://www.tumblr.com/', 'Tumblr', DEFAULT  )";
+                + "VALUES (?1, ?2, DEFAULT  )";
         assertQuery(query, expected);
     }
 
