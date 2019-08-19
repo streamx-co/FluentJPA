@@ -769,16 +769,6 @@ final class DSLInterpreter
                             out.setLength(0);
                         }
 
-                        if (m.isAnnotationPresent(ViewDeclaration.From.class)) {
-                            View view = views.get(originalInst);
-                            argsBuilder.clear();
-                            argsBuilder.add(
-                                    ex -> p -> {
-                                        return p != null ? view.getSelect(resolveLabel(aliases, p)) : view.getSelect();
-                                    });
-                            out.setLength(0);
-                        }
-
                         List<CharSequence> originalParams = pp;
 
                         CharSequence currentSubQuery = (cte != null
@@ -791,6 +781,19 @@ final class DSLInterpreter
 
                         List<Function<CharSequence, CharSequence>> argsBuilderBound = new ArrayList<>();
                         pp = expandVarArgs(pp, argsBuilder, argsBuilderBound);
+
+                        if (m.isAnnotationPresent(ViewDeclaration.From.class)) {
+                            View view = views.get(originalInst);
+
+                            Function<Integer, Function<CharSequence, CharSequence>> paramBuilder = limit -> p -> {
+                                return p != null ? view.getSelect(resolveLabel(aliases, p), limit) : view.getSelect();
+                            };
+                            if (argsBuilderBound.isEmpty())
+                                argsBuilderBound.add(paramBuilder.apply(0));
+                            else
+                                argsBuilderBound.set(0, paramBuilder.apply(1 - argsBuilderBound.size()));
+                            out.setLength(0);
+                        }
 
                         if (m.isAnnotationPresent(ViewDeclaration.Alias.class)) {
                             View view = views.get(originalInst);

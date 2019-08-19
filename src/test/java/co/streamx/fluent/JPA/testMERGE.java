@@ -260,7 +260,7 @@ public class testMERGE implements CommonTest {
             });
 
             WHEN_NOT_MATCHED().THEN(() -> {
-                MERGE_INSERT(viewOf(bonus, Bonus::getEmployee, Bonus::getBonus).from(),
+                MERGE_INSERT(viewOf(bonus, b -> b.getEmployee().getId(), Bonus::getBonus).from(),
                         (Bonus) VALUES(row(empFromDep80.getId(), empFromDep80.getSalary() * .01f)));
                 WHERE(empFromDep80.getSalary() <= threshold);
             });
@@ -414,14 +414,15 @@ public class testMERGE implements CommonTest {
                 });
             });
 
-            WHEN_NOT_MATCHED().THEN(MERGE_INSERT(targetView.columnNames(), VALUES(targetView.from(source))));
+            WHEN_NOT_MATCHED()
+                    .THEN(MERGE_INSERT(targetView.columnNames(), VALUES(targetView.from(source, "override"))));
 
         });
 
         String expected = "MERGE   INTO member_topic t0  USING (SELECT  0 AS member, 110 AS topic, 'test' AS notes  "
                 + "FROM DUAL   ) q0  ON ((t0.member = q0.member) AND (t0.topic = q0.topic)) "
                 + "WHEN MATCHED   THEN UPDATE   SET notes = q0.notes  "
-                + "WHEN NOT MATCHED   THEN INSERT (member, topic, notes) VALUES (q0.member, q0.topic, q0.notes)";
+                + "WHEN NOT MATCHED   THEN INSERT (member, topic, notes) VALUES (q0.member, q0.topic, 'override')";
 
         assertQuery(query, expected);
 

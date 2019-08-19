@@ -93,17 +93,21 @@ interface DSLInterpreterHelpers {
         public List<CharSequence> getInitializers() {
             if (itDecoded != null)
                 return itDecoded;
-            return itDecoded = getInitializers(it);
+            return itDecoded = getInitializers(it, 0);
         }
 
-        public List<CharSequence> getInitializers(CharSequence seq) {
+        public List<CharSequence> getInitializers(CharSequence seq,
+                                                  int limit) {
             CharSequence[] seqs = new CharSequence[it.size()];
             Arrays.fill(seqs, seq);
-            return getInitializers(Arrays.asList(seqs));
+            return getInitializers(Arrays.asList(seqs), limit);
         }
 
-        private List<CharSequence> getInitializers(List<CharSequence> it) {
-            return producers.stream().map(pe -> pe.apply(it)).collect(Collectors.toList());
+        private List<CharSequence> getInitializers(List<CharSequence> it,
+                                                   int limit) {
+            if (limit <= 0)
+                limit = producers.size() + limit;
+            return producers.stream().limit(limit).map(pe -> pe.apply(it)).collect(Collectors.toList());
         }
 
         @Override
@@ -165,7 +169,7 @@ interface DSLInterpreterHelpers {
         public CharSequence getColumns() {
             if (this.columns != null)
                 return this.columns;
-            allColumns = packed.getInitializers("");
+            allColumns = packed.getInitializers("", 0);
             return this.columns = join(allColumns);
         }
 
@@ -179,8 +183,9 @@ interface DSLInterpreterHelpers {
             return selfSelect = join(packed.getInitializers());
         }
 
-        public CharSequence getSelect(CharSequence seq) {
-            return join(packed.getInitializers(seq));
+        public CharSequence getSelect(CharSequence seq,
+                                      int limit) {
+            return join(packed.getInitializers(seq, limit));
         }
 
     }
