@@ -296,7 +296,7 @@ public class testMERGE implements CommonTest {
         try {
             assertQuery(query, expected);
         } catch (AssertionError e) {
-            expected = "INSERT LOG ERRORS INTO errlog ( CONCAT( CONCAT( '' , 'My bad: ' ) , TO_CHAR(SYSDATE ) ) )REJECT LIMIT UNLIMITED";
+            expected = "LOG ERRORS INTO errlog ( CONCAT( CONCAT( '' , 'My bad: ' ) , TO_CHAR(SYSDATE ) ) )REJECT LIMIT UNLIMITED";
             assertQuery(query, expected);
         }
     }

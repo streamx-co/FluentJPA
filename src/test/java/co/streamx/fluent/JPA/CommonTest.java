@@ -17,6 +17,7 @@ public interface CommonTest {
     static String normalizeSpaces(String string) {
         return string.replaceAll("\\s*\\(\\s*", " (")
                 .replaceAll("\\s*\\)\\s*", ") ")
+                .replaceAll("\\s*\\,\\s*", ",")
                 .replaceAll("\\s+", " ")
                 .replace("\n", "");
     }

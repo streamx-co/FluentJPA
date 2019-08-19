@@ -38,6 +38,7 @@ import static co.streamx.fluent.SQL.SQL.WHERE;
 import static co.streamx.fluent.SQL.SQL.WITH;
 import static co.streamx.fluent.SQL.SQL.row;
 import static co.streamx.fluent.SQL.ScalarFunctions.CASE;
+import static co.streamx.fluent.SQL.ScalarFunctions.CONCAT;
 import static co.streamx.fluent.SQL.ScalarFunctions.CURRENT_TIMESTAMP;
 import static co.streamx.fluent.SQL.ScalarFunctions.WHEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -534,7 +535,7 @@ public class TestSQL implements CommonTest {
             INTO(f);
             VALUES(row("UA502", "Bananas", 105, "1971-07-13", DEFAULT(), "82 minutes"));
             ON_DUPLICATE_KEY_UPDATE(() -> {
-                f.setTitle(f.getTitle() + "-dup!");
+                f.setTitle(CONCAT(f.getTitle(), "-dup!"));
             });
         });
 
