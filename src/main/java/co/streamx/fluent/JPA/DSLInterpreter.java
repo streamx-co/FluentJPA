@@ -91,7 +91,6 @@ final class DSLInterpreter
     private final Set<Capability> capabilities;
 
     private SubQueryManager subQueries_ = new SubQueryManager(Collections.emptyList());
-    private Set<CharSequence> parameterRefs = new HashSet<>();
     private Set<CharSequence> tableRefs = new HashSet<>();
     private Map<CharSequence, CharSequence> aliases_ = Collections.emptyMap();
     private CharSequence subQueryAlias;
@@ -253,12 +252,8 @@ final class DSLInterpreter
         };
     }
 
-    StringBuilder registerParameter(Object value) {
-        indexedParameters.add(value);
-        int index = indexedParameters.size();
-        StringBuilder name = new StringBuilder().append(index);
-        parameterRefs.add(name);
-        return name;
+    public CharSequence registerParameter(Object value) {
+        return new ParameterRef(value, indexedParameters);
     }
 
     @Override
@@ -687,6 +682,7 @@ final class DSLInterpreter
                     Literal literal = getAnnotation(parameterAnnotations, Literal.class);
 
                     argsBuilder.add(ex -> {
+
                         Function<CharSequence, CharSequence> renderer = setupParameterRenderingContext(context,
                                 expression(ex != null ? ex : arg, subQueries, aliases));
 
@@ -782,16 +778,34 @@ final class DSLInterpreter
                         List<Function<CharSequence, CharSequence>> argsBuilderBound = new ArrayList<>();
                         pp = expandVarArgs(pp, argsBuilder, argsBuilderBound);
 
-                        if (m.isAnnotationPresent(ViewDeclaration.From.class)) {
+                        ViewDeclaration.From viewFrom = m.getAnnotation(ViewDeclaration.From.class);
+                        if (viewFrom != null) {
                             View view = views.get(originalInst);
 
                             Function<Integer, Function<CharSequence, CharSequence>> paramBuilder = limit -> p -> {
-                                return p != null ? view.getSelect(resolveLabel(aliases, p), limit) : view.getSelect();
+                                if (p != null) {
+                                    return (p instanceof ParameterRef)
+                                            ? view.getSelect(((ParameterRef) p).getValue(), limit, viewFrom.aliased())
+                                            : view.getSelect(resolveLabel(aliases, p), limit, viewFrom.aliased());
+                                }
+                                else
+                                    return view.getSelect();
                             };
+
+                            int size = argsBuilderBound.size();
                             if (argsBuilderBound.isEmpty())
                                 argsBuilderBound.add(paramBuilder.apply(0));
                             else
-                                argsBuilderBound.set(0, paramBuilder.apply(1 - argsBuilderBound.size()));
+                                argsBuilderBound.set(0, paramBuilder.apply(1 - size));
+
+                            if (viewFrom.aliased()) {
+                                for (int i = 1; i < size; i++) {
+                                    int ip = i - size;
+                                    Function<CharSequence, CharSequence> bound = argsBuilderBound.get(i);
+                                    argsBuilderBound.set(i, bound.andThen(p -> view.getColumn(p, ip)));
+                                }
+                            }
+
                             out.setLength(0);
                         }
 
@@ -801,8 +815,7 @@ final class DSLInterpreter
 
                             for (int i = 0; i < pp.size(); i++) {
                                 int ip = i;
-                                argsBuilderBound
-                                        .add(p -> new StringBuilder(p).append(SEP_AS_SEP).append(view.getColumn(ip)));
+                                argsBuilderBound.add(p -> view.getColumn(p, ip));
                             }
 
                             out.setLength(0);
@@ -1063,12 +1076,7 @@ final class DSLInterpreter
                     return registerJoinTable(tableRef, e);
                 }
 
-                CharSequence value = t.get(index);
-
-                if (parameterRefs.contains(value))
-                    return new StringBuilder().append(QUESTION_MARK_CHAR).append(value);
-
-                return registerJoinTable(value, e);
+                return registerJoinTable(t.get(index), e);
             };
         };
     }
@@ -1148,7 +1156,7 @@ final class DSLInterpreter
 
             List<Expression> curArgs = bind(allArgs, eargs);
 
-            return t -> new PackedInitializers(curArgs, ppe, t);
+            return t -> new PackedInitializers(curArgs, ppe, t, this);
         };
     }
 }

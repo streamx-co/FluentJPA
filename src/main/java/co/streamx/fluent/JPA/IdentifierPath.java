@@ -2,6 +2,7 @@ package co.streamx.fluent.JPA;
 
 import java.util.List;
 
+import co.streamx.fluent.JPA.DSLInterpreterHelpers.ParameterRef;
 import lombok.RequiredArgsConstructor;
 
 interface IdentifierPath extends UnboundCharSequence {
@@ -48,6 +49,9 @@ interface IdentifierPath extends UnboundCharSequence {
 
         @Override
         public CharSequence resolveInstance(CharSequence inst) {
+            if (inst instanceof ParameterRef)
+                throw TranslationError.CANNOT_DEREFERENCE_PARAMETERS.getError(((ParameterRef) inst).getValue(),
+                        resolution);
             if (Strings.isNullOrEmpty(inst))
                 return this;
             if (inst instanceof IdentifierPath)

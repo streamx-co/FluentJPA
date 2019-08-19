@@ -52,6 +52,7 @@ final class JPAHelpers {
 
     private static final char DOT = IdentifierPath.DOT;
     private static final char UNDERSCORE = '_';
+    private static final Map<Member, Field> membersToFields = new ConcurrentHashMap<>();
 
     // https://stackoverflow.com/questions/3473756/java-convert-primitive-class/17836370
     private static final Class<?>[] wrappers = { Integer.class, Double.class, Byte.class, Boolean.class,
@@ -543,30 +544,36 @@ final class JPAHelpers {
         return ids.computeIfAbsent(declaringClass, JPAHelpers::findId);
     }
 
-    public static Field getField(Member m) {
+    public static Field getField(Member m1) {
 
-        String original = m.getName();
+        if (membersToFields.size() > 10000)
+            membersToFields.clear();
 
-        String name = getFieldName(m);
-        String decapitalized = decapitalize(name);
-        Class<?> clazz = m.getDeclaringClass();
-        for (;;) {
-            try {
-                return clazz.getDeclaredField(decapitalized);
-            } catch (NoSuchFieldException e) {
+        return membersToFields.computeIfAbsent(m1, m -> {
+
+            String original = m.getName();
+
+            String name = getFieldName(m);
+            String decapitalized = decapitalize(name);
+            Class<?> clazz = m.getDeclaringClass();
+            for (;;) {
                 try {
-                    return clazz.getDeclaredField(name);
-                } catch (NoSuchFieldException e1) {
+                    return clazz.getDeclaredField(decapitalized);
+                } catch (NoSuchFieldException e) {
                     try {
-                        return clazz.getDeclaredField(original);
-                    } catch (NoSuchFieldException e2) {
-                        clazz = clazz.getSuperclass();
-                        if (clazz == Object.class || clazz == null)
-                            throw TranslationError.UNMAPPED_FIELD.getError(e2, original);
+                        return clazz.getDeclaredField(name);
+                    } catch (NoSuchFieldException e1) {
+                        try {
+                            return clazz.getDeclaredField(original);
+                        } catch (NoSuchFieldException e2) {
+                            clazz = clazz.getSuperclass();
+                            if (clazz == Object.class || clazz == null)
+                                throw TranslationError.UNMAPPED_FIELD.getError(e2, original);
+                        }
                     }
                 }
             }
-        }
+        });
     }
 
     private static String getFieldName(Member m) {

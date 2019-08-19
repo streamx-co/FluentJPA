@@ -8,10 +8,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import co.streamx.fluent.extree.expression.ConstantExpression;
 import co.streamx.fluent.extree.expression.Expression;
 import co.streamx.fluent.extree.expression.ExpressionType;
+import co.streamx.fluent.extree.expression.InvocationExpression;
 import co.streamx.fluent.extree.expression.LambdaExpression;
 import co.streamx.fluent.extree.expression.ParameterExpression;
 import co.streamx.fluent.notation.Context;
@@ -47,7 +49,7 @@ interface DSLInterpreterHelpers {
         }
 
         public CharSequence registerAsParameter() {
-            return new StringBuilder().append(DSLInterpreter.QUESTION_MARK_CHAR).append(dsl.registerParameter(value));
+            return dsl.registerParameter(value);
         }
 
         @Override
@@ -86,9 +88,11 @@ interface DSLInterpreterHelpers {
     final class PackedInitializers implements UnboundCharSequence {
 
         private final List<Expression> expressions;
+        List<Function<Object[], ?>> compiled;
         private final List<Function<List<CharSequence>, CharSequence>> producers;
         private final List<CharSequence> it;
         private List<CharSequence> itDecoded;
+        private final DSLInterpreter dsl;
 
         public List<CharSequence> getInitializers() {
             if (itDecoded != null)
@@ -103,11 +107,34 @@ interface DSLInterpreterHelpers {
             return getInitializers(Arrays.asList(seqs), limit);
         }
 
+        public List<CharSequence> getInitializers(Object value,
+                                                  int limit) {
+            if (limit <= 0)
+                limit = producers.size() + limit;
+            Object[] t = { value };
+            return compiled().stream()
+                    .limit(limit)
+                    .map(f -> f.apply(t))
+                    .map(p -> dsl.registerParameter(p))
+                    .collect(Collectors.toList());
+        }
+
         private List<CharSequence> getInitializers(List<CharSequence> it,
                                                    int limit) {
             if (limit <= 0)
                 limit = producers.size() + limit;
             return producers.stream().limit(limit).map(pe -> pe.apply(it)).collect(Collectors.toList());
+        }
+
+        private List<Function<Object[], ?>> compiled() {
+            if (compiled == null)
+                compiled = expressions.stream()
+                        .map(e -> ((InvocationExpression) e).getTarget())
+                        .map(ie -> ie instanceof LambdaExpression ? ((LambdaExpression<?>) ie).compile()
+                                : LambdaExpression.compile(ie))
+                        .collect(Collectors.toList());
+
+            return compiled;
         }
 
         @Override
@@ -137,14 +164,14 @@ interface DSLInterpreterHelpers {
         }
     }
 
-    final class RequiresParenthesesInAS extends Wrapped {
-        public RequiresParenthesesInAS(CharSequence wrapped) {
-            super(wrapped);
-        }
+    @Getter
+    @RequiredArgsConstructor
+    final class RequiresParenthesesInAS implements Wrapped {
+        private final CharSequence wrapped;
 
         @Override
-        public boolean isEmpty() {
-            return false;
+        public String toString() {
+            return getWrapped().toString();
         }
     }
 
@@ -157,10 +184,13 @@ interface DSLInterpreterHelpers {
         private List<CharSequence> allColumns;
         private CharSequence selfSelect;
 
-        public CharSequence getColumn(int i) {
+        public CharSequence getColumn(CharSequence p,
+                                      int i) {
             getColumns();
             try {
-                return allColumns.get(i);
+                if (i < 0)
+                    i += allColumns.size();
+                return new StringBuilder(p).append(DSLInterpreter.SEP_AS_SEP).append(allColumns.get(i));
             } catch (IndexOutOfBoundsException ioobe) {
                 throw TranslationError.ALIAS_NOT_SPECIFIED.getError(ioobe, i);
             }
@@ -170,51 +200,90 @@ interface DSLInterpreterHelpers {
             if (this.columns != null)
                 return this.columns;
             allColumns = packed.getInitializers("", 0);
-            return this.columns = join(allColumns);
+            return this.columns = join(allColumns, false);
         }
 
-        private static String join(List<CharSequence> columns) {
-            return String.join(DSLInterpreter.COMMA_CHAR + DSLInterpreter.KEYWORD_DELIMITER, columns);
+        private String join(List<CharSequence> columns, boolean aliased) {
+            Iterable<CharSequence> it = aliased
+                    ? () -> IntStream.range(0, columns.size()).mapToObj(i -> getColumn(columns.get(i), i)).iterator()
+                    : columns;
+            return String.join(DSLInterpreter.COMMA_CHAR + DSLInterpreter.KEYWORD_DELIMITER, it);
         }
 
         public CharSequence getSelect() {
             if (selfSelect != null)
                 return selfSelect;
-            return selfSelect = join(packed.getInitializers());
+            return selfSelect = join(packed.getInitializers(), false);
         }
 
         public CharSequence getSelect(CharSequence seq,
-                                      int limit) {
-            return join(packed.getInitializers(seq, limit));
+                                      int limit,
+                                      boolean aliased) {
+            return join(packed.getInitializers(seq, limit), aliased);
+        }
+
+        public CharSequence getSelect(Object value,
+                                      int limit,
+                                      boolean aliased) {
+            return join(packed.getInitializers(value, limit), aliased);
         }
 
     }
 
-    @Getter
-    @RequiredArgsConstructor
-    abstract class Wrapped implements UnboundCharSequence {
-        private final CharSequence wrapped;
+    interface Wrapped extends UnboundCharSequence {
+
+        CharSequence getWrapped();
 
         @Override
-        public int length() {
-            return wrapped.length();
+        default boolean isEmpty() {
+            return length() != 0;
         }
 
         @Override
-        public char charAt(int index) {
-            return wrapped.charAt(index);
+        default int length() {
+            return getWrapped().length();
         }
 
         @Override
-        public CharSequence subSequence(int start,
+        default char charAt(int index) {
+            return getWrapped().charAt(index);
+        }
+
+        @Override
+        default CharSequence subSequence(int start,
                                         int end) {
-            return wrapped.subSequence(start, end);
+            return getWrapped().subSequence(start, end);
+        }
+    }
+
+    @RequiredArgsConstructor
+    @Getter
+    class ParameterRef implements Wrapped {
+
+        private CharSequence seq;
+        private final Object value;
+        private final List<Object> indexedParameters;
+        
+        @Override
+        public CharSequence getWrapped() {
+            if (seq == null) {
+                indexedParameters.add(value);
+                int index = indexedParameters.size();
+                seq = new StringBuilder().append(DSLInterpreter.QUESTION_MARK_CHAR).append(index);
+            }
+            return seq;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return false;
         }
 
         @Override
         public String toString() {
-            return wrapped.toString();
+            return getWrapped().toString();
         }
+
     }
 
     default String getOperatorSign(int expressionType) {

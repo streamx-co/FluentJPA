@@ -43,6 +43,7 @@ import javax.persistence.Table;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.util.StopWatch;
 
 import co.streamx.fluent.SQL.Alias;
 import co.streamx.fluent.SQL.View;
@@ -390,41 +391,57 @@ public class testMERGE implements CommonTest {
 
         co.streamx.fluent.SQL.Oracle.SQL.registerVendorCapabilities(FluentJPA::setCapabilities);
 
-        FluentQuery query = FluentJPA.SQL((MemberTopic target) -> {
+        StopWatch stopper = new StopWatch();
 
-            // view is used for INSERT and alias
-            View<MemberTopic> targetView = viewOf(target, MemberTopic::getMember, MemberTopic::getTopic,
-                    MemberTopic::getNotes);
+        while (stopper.getTotalTimeSeconds() < 1000) {
+            MemberTopic x = new MemberTopic();
+            x.setMember(5);
+            x.setTopic(4);
 
-            // source is a sub query
-            MemberTopic source = subQuery(() -> {
-                SELECT(targetView.alias(0, 110, "test"));
-                FROM(DUAL()); // Must be in Oracle
-            });
+            stopper.start();
+            FluentQuery query = FluentJPA.SQL((MemberTopic target) -> {
 
-            // match new record with existing
-            MERGE().INTO(target)
-                    .USING(source)
-                    // matching criteria
-                    .ON(target.getMember() == source.getMember() && target.getTopic() == source.getTopic());
+                // view is used for INSERT and alias
+                View<MemberTopic> targetView = viewOf(target, MemberTopic::getMember, MemberTopic::getTopic,
+                        MemberTopic::getNotes);
 
-            WHEN_MATCHED().THEN(() -> {
-                MERGE_UPDATE().SET(() -> {
-                    target.setNotes(source.getNotes());
+                // source is a sub query
+                MemberTopic source = subQuery(() -> {
+                    SELECT(targetView.fromAliased(x, "test"));
+                    FROM(DUAL()); // Must be in Oracle
                 });
+
+                // match new record with existing
+                MERGE().INTO(target)
+                        .USING(source)
+                        // matching criteria
+                        .ON(target.getMember() == source.getMember() && target.getTopic() == source.getTopic());
+
+                WHEN_MATCHED().THEN(() -> {
+                    MERGE_UPDATE().SET(() -> {
+                        target.setNotes(source.getNotes());
+                    });
+                });
+
+                WHEN_NOT_MATCHED()
+                        .THEN(MERGE_INSERT(targetView.columnNames(), VALUES(targetView.from(source, "override"))));
+
             });
 
-            WHEN_NOT_MATCHED()
-                    .THEN(MERGE_INSERT(targetView.columnNames(), VALUES(targetView.from(source, "override"))));
+            stopper.stop();
+            System.out.println(stopper.getLastTaskTimeMillis());
 
-        });
+            String expected = "MERGE   INTO member_topic t0  USING (SELECT  ?1 AS member, ?2 AS topic, 'test' AS notes  "
+                    + "FROM DUAL   ) q0  ON ((t0.member = q0.member) AND (t0.topic = q0.topic)) "
+                    + "WHEN MATCHED   THEN UPDATE   SET notes = q0.notes  "
+                    + "WHEN NOT MATCHED   THEN INSERT (member, topic, notes) VALUES (q0.member, q0.topic, 'override')";
 
-        String expected = "MERGE   INTO member_topic t0  USING (SELECT  0 AS member, 110 AS topic, 'test' AS notes  "
-                + "FROM DUAL   ) q0  ON ((t0.member = q0.member) AND (t0.topic = q0.topic)) "
-                + "WHEN MATCHED   THEN UPDATE   SET notes = q0.notes  "
-                + "WHEN NOT MATCHED   THEN INSERT (member, topic, notes) VALUES (q0.member, q0.topic, 'override')";
+            assertQuery(query, expected);
 
-        assertQuery(query, expected);
+//            Thread.sleep(1000);
+            break;
+        }
+
 
     }
 }

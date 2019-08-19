@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 enum TranslationError {
     INVALID_FROM_PARAM("Only @Entity, @Tuple or scalar(primitive) types are allowed in FROM context: {0}"),
     CANNOT_CALCULATE_TABLE_REFERENCE("Cannot calculate table reference from: {0}"),
+    CANNOT_DEREFERENCE_PARAMETERS("Cannot access parameters properties inside SQL expression: [{0}].[{1}]"),
     REQUIRES_EXTERNAL_PARAMETER(
             "Parameter method accepts external parameters only, as an object. "
                     + "Calculations and expressions must be performed out of Lambda. Received: {0}"),
