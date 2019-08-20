@@ -51,8 +51,7 @@ public interface NetworkObjectRepo extends JpaRepository<NetworkObject, Long>, E
                        long agg) {
         return aggregateBy(agg)
                 .OVER(PARTITION(BY(netRange.getNetworkObject().getId()))
-                        .ORDER(BY(netRange.getFirst()), BY(netRange.getLast())))
-                .AS();
+                        .ORDER(BY(netRange.getFirst()), BY(netRange.getLast())));
     }
 
     default List<NetworkObject> findInRange(List<String> objectContainerNames,

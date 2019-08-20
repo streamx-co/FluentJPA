@@ -6,6 +6,7 @@ import static co.streamx.fluent.SQL.Directives.alias;
 import static co.streamx.fluent.SQL.Directives.discardSQL;
 import static co.streamx.fluent.SQL.Directives.injectSQL;
 import static co.streamx.fluent.SQL.Directives.subQuery;
+import static co.streamx.fluent.SQL.Directives.aliasOf;
 import static co.streamx.fluent.SQL.Directives.viewOf;
 import static co.streamx.fluent.SQL.Operators.EXISTS;
 import static co.streamx.fluent.SQL.PostgreSQL.SQL.registerVendorCapabilities;
@@ -229,7 +230,7 @@ public class TestJPA implements CommonTest {
             SELECT(r.getFirst(), r.getLast(), count);
             FROM(r).JOIN(n1).ON(r.getNetworkObject() == n1).JOIN(oc, n1.getObjectContainer() == oc);
             GROUP(BY(r.getFirst()), BY(r.getLast()));
-            ORDER(BY(count).DESC());
+            ORDER(BY(aliasOf(count)).DESC());
         });
 
         String expected = "SELECT t2.first, t2.last, COUNT(DISTINCT t1.name ) AS last "

@@ -5,6 +5,7 @@ import static co.streamx.fluent.SQL.AggregateFunctions.SUM;
 import static co.streamx.fluent.SQL.Directives.alias;
 import static co.streamx.fluent.SQL.Directives.recurseOn;
 import static co.streamx.fluent.SQL.Directives.subQuery;
+import static co.streamx.fluent.SQL.Directives.aliasOf;
 import static co.streamx.fluent.SQL.Directives.viewOf;
 import static co.streamx.fluent.SQL.Library.COUNT;
 import static co.streamx.fluent.SQL.Library.ISNULL;
@@ -15,11 +16,9 @@ import static co.streamx.fluent.SQL.Operators.UNION_ALL;
 import static co.streamx.fluent.SQL.PostgreSQL.SQL.registerVendorCapabilities;
 import static co.streamx.fluent.SQL.SQL.BY;
 import static co.streamx.fluent.SQL.SQL.CUBE;
-import static co.streamx.fluent.SQL.SQL.FETCH;
 import static co.streamx.fluent.SQL.SQL.FROM;
 import static co.streamx.fluent.SQL.SQL.GROUP;
 import static co.streamx.fluent.SQL.SQL.HAVING;
-import static co.streamx.fluent.SQL.SQL.OFFSET;
 import static co.streamx.fluent.SQL.SQL.ORDER;
 import static co.streamx.fluent.SQL.SQL.RECURSIVE;
 import static co.streamx.fluent.SQL.SQL.SELECT;
@@ -76,8 +75,7 @@ public class TestSQLServerTutorial implements CommonTest {
             SELECT(p.getName(), p.getListPrice());
             FROM(p);
             ORDER(BY(p.getListPrice()), BY(p.getName()));
-            OFFSET(10).ROWS();
-            FETCH(10).ROWS();
+            LIMIT(10, 10);
         });
 
         String expected = "SELECT t0.product_name, t0.list_price " + "FROM products AS t0 "
@@ -110,7 +108,7 @@ public class TestSQLServerTutorial implements CommonTest {
             String man = alias(manager.getFirstName().concat(" ").concat(manager.getLastName()), "manager");
             SELECT(employee, man);
             FROM(emp).JOIN(manager).ON(emp.getManager() == manager);
-            ORDER(BY(man));
+            ORDER(BY(aliasOf(man)));
 
         });
 
@@ -129,7 +127,7 @@ public class TestSQLServerTutorial implements CommonTest {
 
             SELECT(c1.getCity(), customer_1, customer_2);
             FROM(c1).JOIN(c2).ON(c1.getId() > c2.getId() && c1.getCity() == c2.getCity());
-            ORDER(BY(c1.getCity()), BY(customer_1), BY(customer_2));
+            ORDER(BY(c1.getCity()), BY(aliasOf(customer_1)), BY(aliasOf(customer_2)));
 
         });
 
@@ -198,7 +196,7 @@ public class TestSQLServerTutorial implements CommonTest {
             FROM(i);
             GROUP(BY(i.getOrder().getId()));
             HAVING(netValue > 20000);
-            ORDER(BY(netValue));
+            ORDER(BY(aliasOf(netValue)));
         });
 
         String expected = "SELECT t0.order_id, SUM(((t0.quantity * t0.list_price) * (1.0 - t0.discount))) AS netValue "
@@ -488,7 +486,7 @@ public class TestSQLServerTutorial implements CommonTest {
         });
 
         String expected = "WITH RECURSIVE  q0 (n)   AS " + "(SELECT 1 " + "UNION ALL  " + "SELECT (t0.n + 1) "
-                + "FROM q0 AS t0 )" + "SELECT q0.n " + "FROM q0 " + "FETCH NEXT 3  ROWS ONLY";
+                + "FROM q0 AS t0 )" + "SELECT q0.n " + "FROM q0 " + "OFFSET 0 ROWS FETCH NEXT 3  ROWS ONLY";
 
         assertQuery(query, expected);
     }

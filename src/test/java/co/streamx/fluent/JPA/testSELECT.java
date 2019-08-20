@@ -3,6 +3,7 @@ package co.streamx.fluent.JPA;
 import static co.streamx.fluent.SQL.AggregateFunctions.AVG;
 import static co.streamx.fluent.SQL.AggregateFunctions.MAX;
 import static co.streamx.fluent.SQL.AggregateFunctions.SUM;
+import static co.streamx.fluent.SQL.Directives.aggregateBy;
 import static co.streamx.fluent.SQL.Directives.alias;
 import static co.streamx.fluent.SQL.Directives.byRef;
 import static co.streamx.fluent.SQL.Directives.subQuery;
@@ -30,6 +31,9 @@ import static co.streamx.fluent.SQL.SQL.row;
 import static co.streamx.fluent.SQL.TransactSQL.SQL.NEXT_VALUE_FOR;
 import static co.streamx.fluent.SQL.TransactSQL.SQL.sequence;
 
+import java.sql.Date;
+import java.sql.Timestamp;
+
 import javax.persistence.Column;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
@@ -39,6 +43,9 @@ import javax.persistence.Table;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import co.streamx.fluent.SQL.DataType;
+import co.streamx.fluent.SQL.PostgreSQL.DataTypeNames;
+import co.streamx.fluent.SQL.PostgreSQL.DataTypes;
 import co.streamx.fluent.SQL.TransactSQL.Sequence;
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
@@ -335,6 +342,41 @@ public class testSELECT implements CommonTest {
         });
 
         String expected = "SELECT NEXT VALUE FOR myseq  AS X, NEXT VALUE FOR static";
+
+        assertQuery(query, expected);
+    }
+
+    @Tuple
+    @Data
+    @Table(name = "payment")
+    public static class Payment {
+        private int amount;
+        private Timestamp paymentDate;
+    }
+
+    public static final DataType<Double> PERCENT = DataTypeNames.NUMERIC.create(10, 2);
+    public static final DataType<Date> DATE = DataTypes.DATE;
+
+    @Test
+    public void testNestAggregate() throws Exception {
+
+        FluentQuery query = FluentJPA.SQL((Payment payment) -> {
+
+            Date paymentDate = alias(DATE.cast(payment.getPaymentDate()), "payment_date");
+            int amount = alias(SUM(payment.getAmount()), "amount");
+
+            double percentage = alias(PERCENT.cast(100 * aggregateBy(SUM(amount)).OVER(ORDER(BY(paymentDate)))
+                    / aggregateBy(SUM(amount)).OVER()), "percentage");
+
+            SELECT(paymentDate, amount, percentage);
+            FROM(payment);
+            GROUP(BY(paymentDate));
+            ORDER(BY(paymentDate));
+        });
+
+        String expected = "SELECT CAST(t0.payment_date AS DATE) AS payment_date, SUM(t0.amount) AS amount, CAST(((100 *  SUM(SUM(t0.amount))  OVER(ORDER BY  CAST(t0.payment_date AS DATE)  )) /  SUM(SUM(t0.amount))  OVER()) AS NUMERIC(10,2)) AS percentage "
+                + "FROM payment t0 " + "GROUP BY  CAST(t0.payment_date AS DATE)  "
+                + "ORDER BY  CAST(t0.payment_date AS DATE)";
 
         assertQuery(query, expected);
     }

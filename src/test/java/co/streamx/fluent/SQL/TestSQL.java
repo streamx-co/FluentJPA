@@ -102,12 +102,11 @@ public class TestSQL implements CommonTest {
                 double height = alias(p.getHeight(), "h");
                 int age = alias(p.getAge() + (int) tt, "a");
 
-                aggregateBy(MAX(p.getAge())).OVER(PARTITION(BY(p.getAge())).ORDER(BY(p.getName()).ASC()))
-                        .AS(MyCTE::getAge);
+                aggregateBy(MAX(p.getAge())).OVER(PARTITION(BY(p.getAge())).ORDER(BY(p.getName()).ASC()));
 
                 Integer age1 = aggregateBy(MAX(p.getAge()))
-                        .OVER(PARTITION(BY(p.getAge())).ORDER(BY(p.getName()).ASC()))
-                        .AS();
+                        .OVER(PARTITION(BY(p.getAge())).ORDER(BY(p.getName()).ASC()));
+
                 SELECT(age, height, alias(p.getAge(), MyCTE::getHeight));
                 FROM(p, p1).JOIN(p)
                         .ON(p.getHeight() == height && p.isAdult() == p1.isAdult())
@@ -215,8 +214,7 @@ public class TestSQL implements CommonTest {
                                         long agg) {
         return aggregateBy(agg)
                 .OVER(PARTITION(BY(netRange.getNetworkObject().getId())).ORDER(BY(netRange.getFirst()),
-                        BY(netRange.getLast())))
-                .AS();
+                        BY(netRange.getLast())));
     }
 
     public void someMethod(List<String> objectContainerNames,

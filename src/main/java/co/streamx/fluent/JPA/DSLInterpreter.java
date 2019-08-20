@@ -114,7 +114,6 @@ final class DSLInterpreter
     private int parameterCounter;
     private int subQueriesCounter;
     private boolean renderingAssociation;
-    private boolean renderAliases; // TODO: use context per clause
 
     private void addUndeclaredAlias(CharSequence alias) {
         if (undeclaredAliases.isEmpty())
@@ -620,6 +619,14 @@ final class DSLInterpreter
             SubQueryManager subQueries = getSubQueries();
             Map<CharSequence, CharSequence> aliases = getAliases();
 
+            if (m.isAnnotationPresent(Alias.Use.class)) {
+                return ipp -> pp -> {
+                    CharSequence seq = pp.get(0);
+                    CharSequence label = aliases.get(seq);
+                    return label != null ? label : seq;
+                };
+            }
+
             CommonTableExpression cte = m.getAnnotation(CommonTableExpression.class);
             if (cte != null) {
 
@@ -697,7 +704,6 @@ final class DSLInterpreter
 
             boolean isSubQuery = m.isAnnotationPresent(SubQuery.class);
             CharSequence subQueryAlias = isSubQuery ? this.subQueryAlias : null;
-            Alias.Allowed useAlias = m.getAnnotation(Alias.Allowed.class);
 
             return ipp -> {
 
@@ -744,8 +750,6 @@ final class DSLInterpreter
                 CharSequence instFinal = instMutating;
 
                 if (function != null) {
-
-                    renderAliases |= function.aliasesVisible();
 
                     CharSequence fn = function.name().equals(co.streamx.fluent.notation.Function.USE_METHOD_NAME)
                             ? function.underscoresAsBlanks()
@@ -824,13 +828,6 @@ final class DSLInterpreter
 
                         Stream<CharSequence> args = Streams.zip(pp, argsBuilderBound, (arg,
                                                                                        builder) -> builder.apply(arg));
-
-                        if (useAlias != null && renderAliases) {
-                            args = args.map(seq -> {
-                                CharSequence label = aliases.get(seq);
-                                return label != null ? label : seq;
-                            });
-                        }
 
                         String delimiter = function.omitArgumentsDelimiter() ? KEYWORD_DELIMITER
                                 : function.argumentsDelimiter() + KEYWORD_DELIMITER;

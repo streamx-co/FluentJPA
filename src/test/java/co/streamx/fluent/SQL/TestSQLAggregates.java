@@ -124,12 +124,11 @@ public class TestSQLAggregates implements CommonTest {
 
             WindowDef w3 = windowFrame().GROUPS(FrameBounds.CURRENT_ROW);
 
-            Integer first = aggregateBy(FIRST_VALUE(o.getVal())).OVER(w).AS(Stats::getFirst);
-            Integer last = aggregateBy(LAST_VALUE(o.getVal())).OVER(w1).AS(Stats::getLast);
-            Integer nth = aggregateBy(NTH_VALUE(o.getVal(), 2)).FILTER(WHERE(o.getVal() == 7))
-                    .OVER(w2)
-                    .AS(Stats::getNth);
-            Integer nth1 = aggregateBy(NTH_VALUE(o.getVal(), 4)).OVER(w3).AS(Stats::getNth4);
+            Integer first = alias(aggregateBy(FIRST_VALUE(o.getVal())).OVER(w), Stats::getFirst);
+            Integer last = alias(aggregateBy(LAST_VALUE(o.getVal())).OVER(w1), Stats::getLast);
+            Integer nth = alias(aggregateBy(NTH_VALUE(o.getVal(), 2)).FILTER(WHERE(o.getVal() == 7)).OVER(w2),
+                    Stats::getNth);
+            Integer nth1 = alias(aggregateBy(NTH_VALUE(o.getVal(), 4)).OVER(w3), Stats::getNth4);
 
             SELECT(o.getTime(), o.getSubject(), o.getVal(), first, last, nth, nth1);
             FROM(o);

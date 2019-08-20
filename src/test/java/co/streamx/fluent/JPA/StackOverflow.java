@@ -154,9 +154,10 @@ public class StackOverflow implements CommonTest {
         FluentQuery query = FluentJPA.SQL(() -> {
 
             RankedPriceTag ranked = subQuery((PriceTag tag) -> {
-                Long rowNumber = aggregateBy(ROW_NUMBER())
-                        .OVER(PARTITION(BY(tag.getGoodsId())).ORDER(BY(tag.getUpdatedDate()).DESC()))
-                        .AS(RankedPriceTag::getRowNumber);
+                Long rowNumber = alias(
+                        aggregateBy(ROW_NUMBER())
+                                .OVER(PARTITION(BY(tag.getGoodsId())).ORDER(BY(tag.getUpdatedDate()).DESC())),
+                        RankedPriceTag::getRowNumber);
 
                 SELECT(tag, rowNumber);
                 FROM(tag);
