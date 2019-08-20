@@ -50,6 +50,7 @@ import co.streamx.fluent.notation.Capability;
 import co.streamx.fluent.notation.CommonTableExpression;
 import co.streamx.fluent.notation.CommonTableExpressionType;
 import co.streamx.fluent.notation.Context;
+import co.streamx.fluent.notation.Keyword;
 import co.streamx.fluent.notation.Literal;
 import co.streamx.fluent.notation.Operator;
 import co.streamx.fluent.notation.Parameter;
@@ -244,7 +245,7 @@ final class DSLInterpreter
             };
         }
         return eargs -> {
-            if (collectingParameters.orElse(false))
+            if (!(value instanceof Keyword) && collectingParameters.orElse(false))
                 return args -> registerParameter(value);
 
             return args -> new DynamicConstant(value, this);
@@ -645,8 +646,14 @@ final class DSLInterpreter
                             if (with.length() > startLength)
                                 with.append(COMMA_CHAR);
                             CharSequence subQuery = subQueries.sealName(subQueryAlias);
-                            if (subQuery == null)
-                                throw new IllegalArgumentException("Parameter must be subQuery: " + subQueryAlias);
+                            if (subQuery == null) {
+                                if (subQueryAlias instanceof DynamicConstant) {
+                                    with.append(subQueryAlias).append(KEYWORD_DELIMITER_CHAR);
+                                    startLength = with.length();
+                                    continue;
+                                } else
+                                    throw new IllegalArgumentException("Parameter must be subQuery: " + subQueryAlias);
+                            }
                             with.append(subQueryAlias)
                                     .append(SEP_AS_SEP + NEW_LINE + LEFT_PARAN)
                                     .append(subQuery)

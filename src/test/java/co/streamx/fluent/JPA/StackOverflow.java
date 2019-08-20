@@ -4,6 +4,7 @@ import static co.streamx.fluent.SQL.AggregateFunctions.ROW_NUMBER;
 import static co.streamx.fluent.SQL.AggregateFunctions.SUM;
 import static co.streamx.fluent.SQL.Directives.aggregateBy;
 import static co.streamx.fluent.SQL.Directives.alias;
+import static co.streamx.fluent.SQL.Directives.injectSQL;
 import static co.streamx.fluent.SQL.Directives.parameter;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Library.pick;
@@ -50,6 +51,7 @@ import org.junit.jupiter.api.Test;
 import co.streamx.fluent.SQL.Oracle.Format;
 import co.streamx.fluent.SQL.Oracle.FormatModel;
 import co.streamx.fluent.functions.Function1;
+import co.streamx.fluent.notation.Keyword;
 import co.streamx.fluent.notation.Local;
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
@@ -151,6 +153,8 @@ public class StackOverflow implements CommonTest {
     // https://stackoverflow.com/questions/57351634/is-there-a-way-to-get-the-latest-entry-that-is-less-or-equal-to-the-current-time
     public void latestEntry() {
 
+        Keyword joinedDecls = Keyword.join(declareNumberToBoolean(), declareNumberToBoolean());
+
         FluentQuery query = FluentJPA.SQL(() -> {
 
             RankedPriceTag ranked = subQuery((PriceTag tag) -> {
@@ -163,18 +167,35 @@ public class StackOverflow implements CommonTest {
                 FROM(tag);
             });
 
-            WITH(ranked);
+            WITH(joinedDecls, ranked);
             selectAll(ranked);
             WHERE(lessEqual(ranked.getUpdatedDate(), CURRENT_DATE()) && ranked.getRowNumber() == 1);
 
         });
 
-        String expected = "WITH q0 AS "
+        String expected = "WITH " + declareNumberToBoolean() + declareNumberToBoolean() + " q0 AS "
                 + "(SELECT t0.*,  ROW_NUMBER()  OVER(PARTITION BY  t0.goods_id   ORDER BY  t0.updated_date  DESC   ) AS row_number "
                 + "FROM PriceTags t0 ) " + "SELECT q0.* " + "FROM q0 "
                 + "WHERE ((q0.updated_date <= CURRENT_DATE   ) AND (q0.row_number = 1))";
 
         assertQuery(query, expected);
+    }
+
+    @Local
+    public static Keyword declareNumberToBoolean() {
+        // @formatter:off
+        return injectSQL("FUNCTION number_to_boolean_(i NUMBER)\r\n" + 
+                "  RETURN NUMBER\r\n" + 
+                "  IS\r\n" + 
+                "    b BOOLEAN;\r\n" + 
+                "  BEGIN\r\n" + 
+                "    -- Actual function call\r\n" + 
+                "    b := number_to_boolean(i);\r\n" + 
+                "     \r\n" + 
+                "    -- Translation to numeric result\r\n" + 
+                "    RETURN CASE b WHEN TRUE THEN 1 WHEN FALSE THEN 0 END;\r\n" + 
+                "  END number_to_boolean_;");
+        // @formatter:on
     }
 
     @Entity
