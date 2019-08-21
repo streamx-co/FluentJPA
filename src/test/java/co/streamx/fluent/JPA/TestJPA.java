@@ -3,10 +3,10 @@ package co.streamx.fluent.JPA;
 import static co.streamx.fluent.SQL.AggregateFunctions.COUNT;
 import static co.streamx.fluent.SQL.AggregateFunctions.MAX;
 import static co.streamx.fluent.SQL.Directives.alias;
+import static co.streamx.fluent.SQL.Directives.aliasOf;
 import static co.streamx.fluent.SQL.Directives.discardSQL;
 import static co.streamx.fluent.SQL.Directives.injectSQL;
 import static co.streamx.fluent.SQL.Directives.subQuery;
-import static co.streamx.fluent.SQL.Directives.aliasOf;
 import static co.streamx.fluent.SQL.Directives.viewOf;
 import static co.streamx.fluent.SQL.Operators.EXISTS;
 import static co.streamx.fluent.SQL.PostgreSQL.SQL.registerVendorCapabilities;
@@ -22,6 +22,8 @@ import static co.streamx.fluent.SQL.SQL.SELECT;
 import static co.streamx.fluent.SQL.SQL.VALUES;
 import static co.streamx.fluent.SQL.SQL.WHERE;
 import static co.streamx.fluent.SQL.SQL.row;
+import static co.streamx.fluent.SQL.ScalarFunctions.CASE;
+import static co.streamx.fluent.SQL.ScalarFunctions.WHEN;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -230,12 +232,14 @@ public class TestJPA implements CommonTest {
             SELECT(r.getFirst(), r.getLast(), count);
             FROM(r).JOIN(n1).ON(r.getNetworkObject() == n1).JOIN(oc, n1.getObjectContainer() == oc);
             GROUP(BY(r.getFirst()), BY(r.getLast()));
-            ORDER(BY(aliasOf(count)).DESC());
+            Long countAlias = aliasOf(count);
+            ORDER(BY(CASE(WHEN(countAlias <= 4).THEN(countAlias)).END()).DESC().NULLS_LAST());
         });
 
         String expected = "SELECT t2.first, t2.last, COUNT(DISTINCT t1.name ) AS last "
                 + "FROM NETWORK_OBJECT_RANGE AS t2  INNER JOIN NETWORK_OBJECT AS t0  ON (t2.NETWORK_OBJ = t0.id)  INNER JOIN OBJECT_CON AS t1 ON (t0.OBJECT_CON = t1.id) "
-                + "GROUP BY  t2.first ,  t2.last  " + "ORDER BY  last  DESC";
+                + "GROUP BY  t2.first ,  t2.last  "
+                + "ORDER BY  CASE WHEN (last <= 4)  THEN last   END    DESC   NULLS LAST";
         assertQuery(builder, expected);
     }
 
