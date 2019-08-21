@@ -1,6 +1,8 @@
 package co.streamx.fluent.JPA;
 
 import static co.streamx.fluent.SQL.AggregateFunctions.AVG;
+import static co.streamx.fluent.SQL.AggregateFunctions.SUM;
+import static co.streamx.fluent.SQL.Directives.aggregateBy;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Directives.viewOf;
 import static co.streamx.fluent.SQL.Library.collect;
@@ -23,6 +25,7 @@ import static co.streamx.fluent.SQL.SQL.GROUP;
 import static co.streamx.fluent.SQL.SQL.INSERT;
 import static co.streamx.fluent.SQL.SQL.ON_CONFLICT;
 import static co.streamx.fluent.SQL.SQL.ORDER;
+import static co.streamx.fluent.SQL.SQL.PARTITION;
 import static co.streamx.fluent.SQL.SQL.SELECT;
 import static co.streamx.fluent.SQL.SQL.UPDATE;
 import static co.streamx.fluent.SQL.SQL.VALUES;
@@ -550,5 +553,93 @@ public class PGTutorial implements CommonTest, PGtutorialTypes {
                 + "FROM rental AS t0 " + "GROUP BY  t0.customer_id";
         assertQuery(query, expected);
 
+    }
+
+    @Test
+    public void testLucas1() {
+        FluentQuery query = FluentJPA.SQL((Film film,
+                                           Inventory inventory,
+                                           Rental rental,
+                                           Payment payment) -> {
+
+            SELECT(film.getTitle(), payment.getPaymentDate(), SUM(payment.getAmount()));
+            FROM(film).JOIN(inventory)
+                    .USING(i -> i.getFilm().getId())
+                    .JOIN(rental)
+                    .ON(rental.getInventory() == inventory)
+                    .JOIN(payment)
+                    .ON(rental == payment.getRental());
+            GROUP(BY(film.getId()), BY(payment.getPaymentDate()));
+            ORDER(BY(film.getTitle()), BY(payment.getPaymentDate()));
+
+        });
+
+        // @formatter:off
+        String expected = "SELECT t0.title, t3.payment_date, SUM(t3.amount) " + 
+                "FROM film AS t0  INNER JOIN inventory AS t1  USING(film_id) INNER JOIN rental AS t2  ON (t2.inventory_id = t1.inventory_id)  INNER JOIN payment AS t3  ON (t2.rental_id = t3.rental_id) " + 
+                "GROUP BY  t0.film_id ,  t3.payment_date  " + 
+                "ORDER BY  t0.title ,  t3.payment_date";
+        // @formatter:on
+        assertQuery(query, expected);
+    }
+
+    @Test
+    public void testLucas2() {
+        FluentQuery query = FluentJPA.SQL((Film film,
+                                           Inventory inventory,
+                                           Rental rental,
+                                           Payment payment) -> {
+
+            SELECT(film.getTitle(), inventory.getStore().getId(), payment.getPaymentDate(), SUM(payment.getAmount()));
+            FROM(film).JOIN(inventory)
+                    .ON(film == inventory.getFilm())
+                    .JOIN(rental)
+                    .ON(rental.getInventory() == inventory)
+                    .JOIN(payment)
+                    .ON(rental == payment.getRental());
+            GROUP(BY(film.getId()), BY(inventory.getStore().getId()), BY(payment.getPaymentDate()));
+            ORDER(BY(film.getTitle()), BY(inventory.getStore().getId()), BY(payment.getPaymentDate()));
+
+        });
+
+        // @formatter:off
+        String expected = "SELECT t0.title, t1.store_id, t3.payment_date, SUM(t3.amount) \r\n" + 
+                "FROM film AS t0  INNER JOIN inventory AS t1  ON (t0.film_id = t1.film_id)  INNER JOIN rental AS t2  ON (t2.inventory_id = t1.inventory_id)  INNER JOIN payment AS t3  ON (t2.rental_id = t3.rental_id) \r\n" + 
+                "GROUP BY  t0.film_id ,  t1.store_id ,  t3.payment_date  \r\n" + 
+                "ORDER BY  t0.title ,  t1.store_id ,  t3.payment_date";
+        // @formatter:on
+        assertQuery(query, expected);
+    }
+
+    @Test
+    public void testLucas3() {
+        FluentQuery query = FluentJPA.SQL((Film film,
+                                           Inventory inventory,
+                                           Rental rental,
+                                           Payment payment) -> {
+
+            Float sum = aggregateBy(SUM(SUM(payment.getAmount())))
+                    .OVER(PARTITION(BY(film.getTitle()), BY(inventory.getStore().getId()))
+                            .ORDER(BY(payment.getPaymentDate())));
+
+            SELECT(film.getTitle(), inventory.getStore().getId(), payment.getPaymentDate(), sum);
+            FROM(film).JOIN(inventory)
+                    .ON(film == inventory.getFilm())
+                    .JOIN(rental)
+                    .ON(rental.getInventory() == inventory)
+                    .JOIN(payment)
+                    .ON(rental == payment.getRental());
+            GROUP(BY(film.getId()), BY(inventory.getStore().getId()), BY(payment.getPaymentDate()));
+            ORDER(BY(film.getTitle()), BY(inventory.getStore().getId()), BY(payment.getPaymentDate()));
+
+        });
+
+        // @formatter:off
+        String expected = "SELECT t0.title, t1.store_id, t3.payment_date,  SUM(SUM(t3.amount))  OVER(PARTITION BY  t0.title ,  t1.store_id   ORDER BY  t3.payment_date  ) \r\n" + 
+                "FROM film AS t0  INNER JOIN inventory AS t1  ON (t0.film_id = t1.film_id)  INNER JOIN rental AS t2  ON (t2.inventory_id = t1.inventory_id)  INNER JOIN payment AS t3  ON (t2.rental_id = t3.rental_id) \r\n" + 
+                "GROUP BY  t0.film_id ,  t1.store_id ,  t3.payment_date  \r\n" + 
+                "ORDER BY  t0.title ,  t1.store_id ,  t3.payment_date";
+        // @formatter:on
+        assertQuery(query, expected);
     }
 }

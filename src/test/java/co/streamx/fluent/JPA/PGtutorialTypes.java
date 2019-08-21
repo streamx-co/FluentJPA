@@ -36,6 +36,9 @@ public interface PGtutorialTypes {
         @JoinColumn(name = "film_id")
         private Film film;
 
+        @ManyToOne
+        @JoinColumn(name = "store_id")
+        private Store store;
     }
 
     @Entity
@@ -101,6 +104,10 @@ public interface PGtutorialTypes {
         @ManyToOne
         @JoinColumn(name = "staff_id")
         private Staff staff;
+
+        @ManyToOne
+        @JoinColumn(name = "rental_id")
+        private Rental rental;
 
         private float amount;
         private Date paymentDate;
