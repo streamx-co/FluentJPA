@@ -556,7 +556,7 @@ public class PGTutorial implements CommonTest, PGtutorialTypes {
     }
 
     @Test
-    public void testLucas1() {
+    public void testLukas1() {
         FluentQuery query = FluentJPA.SQL((Film film,
                                            Inventory inventory,
                                            Rental rental,
@@ -584,7 +584,7 @@ public class PGTutorial implements CommonTest, PGtutorialTypes {
     }
 
     @Test
-    public void testLucas2() {
+    public void testLukas2() {
         FluentQuery query = FluentJPA.SQL((Film film,
                                            Inventory inventory,
                                            Rental rental,
@@ -612,7 +612,7 @@ public class PGTutorial implements CommonTest, PGtutorialTypes {
     }
 
     @Test
-    public void testLucas3() {
+    public void testLukas3() {
         FluentQuery query = FluentJPA.SQL((Film film,
                                            Inventory inventory,
                                            Rental rental,

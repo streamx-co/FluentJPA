@@ -20,6 +20,7 @@ import static co.streamx.fluent.SQL.SQL.SELECT;
 import static co.streamx.fluent.SQL.SQL.WHERE;
 import static co.streamx.fluent.SQL.ScalarFunctions.CAST;
 import static co.streamx.fluent.SQL.TransactSQL.SQL.HASHBYTES;
+import static co.streamx.fluent.SQL.TransactSQL.SQL.TOP;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigDecimal;
@@ -84,11 +85,13 @@ public class GrammarTest implements CommonTest {
 
         FluentQuery query = FluentJPA.SQL((Houshold h) -> {
 
-            SELECT(ROUND(TO_DATE("27-OCT-00"), Format.YEAR), TRUNC(TO_DATE("27-OCT-92"), DD_MON_YY));
+            SELECT(TOP(3).PERCENT()
+                    .WITH_TIES()
+                    .of(ROUND(TO_DATE("27-OCT-00"), Format.YEAR), TRUNC(TO_DATE("27-OCT-92"), DD_MON_YY)));
             FROM(DUAL());
         });
 
-        String expected = "SELECT ROUND(TO_DATE('27-OCT-00'), 'YEAR'), TRUNC(TO_DATE('27-OCT-92'), 'DD-MON-YY') "
+        String expected = "SELECT TOP(3) PERCENT   WITH TIES ROUND(TO_DATE('27-OCT-00'), 'YEAR'), TRUNC(TO_DATE('27-OCT-92'), 'DD-MON-YY') "
                 + "FROM DUAL";
 
         String sql = query.toString();
