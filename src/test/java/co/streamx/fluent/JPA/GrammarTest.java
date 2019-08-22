@@ -94,9 +94,7 @@ public class GrammarTest implements CommonTest {
         String expected = "SELECT TOP(3) PERCENT   WITH TIES ROUND(TO_DATE('27-OCT-00'), 'YEAR'), TRUNC(TO_DATE('27-OCT-92'), 'DD-MON-YY') "
                 + "FROM DUAL";
 
-        String sql = query.toString();
-        System.out.println(sql);
-        assertEquals(expected, sql.replace("\n", ""));
+        assertQuery(query, expected);
     }
 
     public static final Sequence<Long> staticSequence = sequence("static");
