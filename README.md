@@ -11,12 +11,20 @@ And by saying Java, we **mean** Java. There is no DSL or semantic gap. You use `
 * covers the entire **Modern** SQL [DML](https://en.wikipedia.org/wiki/Data_manipulation_language) standard. SQL has changed since SQL-92, where JPQL is stuck: [SQL-99 Common Table Expressions](https://github.com/streamx-co/FluentJPA/wiki/Common-Table-Expressions) (`WITH` clause), [SQL-2003 Window Functions](https://github.com/streamx-co/FluentJPA/wiki/Window-Functions) (`OVER` clause), [SQL-2003 MERGE](https://github.com/streamx-co/FluentJPA/wiki/MERGE) (`UPSERT` clause), [Dynamic Queries](https://github.com/streamx-co/FluentJPA/wiki/Dynamic-Queries) without [Criteria API](https://en.wikibooks.org/wiki/Java_Persistence/Criteria) and many, many more. FluentJPA offers this power as a handy Java library.
 * naturally extends JPA. Once you mapped your entities, forget about mapping. Use JPA entity getters and setters to write expressions and joins, store intermediate calculations in variables, pass them to methods - we seamlessly translate it to SQL. FluentJPA lets you use SQL to *program* your business logic. Under the covers FluentJPA reads all the JPA annotations to map properties and objects to SQL column and table names, then it uses JPA native query for execution. As a result the solution is integrated with JPA pipeline and transaction, calls to JPA and FluentJPA can be freely mixed producing correct results.
 
+## Competition
+
+How is FluentJPA different (better) than its competitors, jOOQ in particular? This question [was asked](https://www.reddit.com/r/java/comments/ctu53m/fluentjpa_provides_fluent_api_for_writing/exr9g1t) on Reddit by Mr. Lukas Eder, CEO of Data Geekery GmbH, the developer of jOOQ. [Full conversation](https://www.reddit.com/r/java/comments/ctu53m/fluentjpa_provides_fluent_api_for_writing/exr9g1t).
+
+## Setup
+
 There is no bootstrap, code generation step or anything else needed to use FluentJPA. Add [dependencies](https://github.com/streamx-co/FluentJPA/wiki/Setup) to your project build system and unlock the full power of type-safe Object Oriented SQL in your JPA project without compromises! (Disclaimer: FluentJPA strives to be as unobtrusive as possible. We don't change or affect anything, so your existing code will continue to work as before. We don't bring **any** dependencies except our own code and [ASM](https://asm.ow2.io/), total ~500K).
+
+## Examples
 
 <!-- > Probably the most important feature missing in JPA is **Sub Query**. Joins are kind of "solved" by JPA annotations combined with JPA loading policies. With JPA Repositories [Query Creation](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#repositories.query-methods.query-creation) it's possible to easily create most of single queries required in practice. But there is absolutely no good solution when a sub query is needed! Not only FluentJPA supports sub queries very well, it also lets put them into a separate Java function, for brevity. After all, sub query is sort of a lambda inside an SQL query, I think. -->
 > Probably the most important feature missing in JPA is **Sub Query**. We think that any serious SQL starts with them (just look [here](https://mode.com/sql-tutorial/sql-subqueries/) for few examples). Not only FluentJPA supports sub queries, it also lets put them into a separate Java(!) function. So the code looks 100% natural to a Java developer.
 
-Let's start easy and look on the simplest query possible and understand the entire flow. (A bit spiced with passing an external parameter and optional JPA Repository integration)
+Let's start with the simplest query possible to overview the entire flow. (A bit spiced with passing an external parameter and optional JPA Repository integration)
 
 ### Example 0 - [testPassArguments()](src/test/java/co/streamx/fluent/JPA/PersonRepositoryTest.java)
 
