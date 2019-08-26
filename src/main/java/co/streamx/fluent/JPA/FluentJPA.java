@@ -2,6 +2,8 @@ package co.streamx.fluent.JPA;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -120,7 +122,7 @@ public final class FluentJPA {
 
             if (!suppressBanner) {
                 String project = lic.get("project").getString();
-                reportLicenseOk(project, nLicensed);
+                reportLicenseOk(project, nLicensed, expiration);
             }
 
             return true;
@@ -128,9 +130,13 @@ public final class FluentJPA {
     }
 
     private static void reportLicenseOk(String project,
-                                        int queries) {
-        String quota = queries > 0 ? queries + " queries." : "UNLIMITED.";
-        printBanner("Thank you for using FluentJPA in the awesome '" + project + "' project!\nYour quota is " + quota);
+                                        int queries,
+                                        Date expiration) {
+        String quota = queries > 0 ? queries + " queries" : "UNLIMITED";
+        DateFormat dateFormat = new SimpleDateFormat("yyyy-MMM-dd");
+
+        printBanner("Thank you for using FluentJPA in the awesome '" + project + "' project!\nYour quota is " + quota
+                + ". License expires at " + dateFormat.format(expiration) + ".");
     }
 
     private static void reportNoLicense() {
