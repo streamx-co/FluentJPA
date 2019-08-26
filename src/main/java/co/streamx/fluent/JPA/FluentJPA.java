@@ -5,8 +5,10 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.OptionalInt;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import co.streamx.fluent.JPA.spi.JPAConfiguration;
@@ -42,8 +44,11 @@ public final class FluentJPA {
     @Setter
     @NonNull
     private static Set<Capability> capabilities = Collections.emptySet();
+    private static final Set<Object> usage = ConcurrentHashMap.newKeySet();
 
     private static final AtomicBoolean licenseChecked = new AtomicBoolean();
+    private static volatile int nLicensed = 0;
+    private static volatile int nLicensedDelta = 0;
 
     static {
         ServiceLoader<SQLConfigurator> loader = ServiceLoader.load(SQLConfigurator.class);
@@ -111,32 +116,45 @@ public final class FluentJPA {
                 return false;
             }
 
+            nLicensed = lic.get("queries").getInt();
+
             if (!suppressBanner) {
                 String project = lic.get("project").getString();
-                reportLicenseOk(project);
+                reportLicenseOk(project, nLicensed);
             }
 
             return true;
         }
     }
 
-    private static void reportLicenseOk(String project) {
-        printBanner("Thank you for using FluentJPA in the awesome '" + project + "' project!");
+    private static void reportLicenseOk(String project,
+                                        int queries) {
+        String quota = queries > 0 ? queries + " queries." : "UNLIMITED.";
+        printBanner("Thank you for using FluentJPA in the awesome '" + project + "' project!\nYour quota is " + quota);
     }
 
     private static void reportNoLicense() {
         printBanner(
-                "Thank you for using FluentJPA!\nNo valid FluentJPA commercial license file was found.\nFluentJPA is licensed under AGPLv3.\nPlease verify your product license is compliant.");
+                "Thank you for using FluentJPA!\nNo valid FluentJPA commercial license file was found.\nWithout commercial license FluentJPA is licensed under AGPLv3.\nPlease verify your product license is compliant.");
     }
 
     private static void reportLicenseExpired() {
         printBanner(
-                "Thank you for using FluentJPA!\nFluentJPA commercial license has expired, please renew.\nFluentJPA is licensed under AGPLv3.\nPlease verify your product license is compliant.");
+                "Thank you for using FluentJPA!\nFluentJPA commercial license has expired, please renew.\nWithout commercial license FluentJPA is licensed under AGPLv3.\nPlease verify your product license is compliant.");
+    }
+
+    private static void reportUsageExceedsQuota(int usage) {
+        printBanner("Your FluentJPA usage exceeds the purchased quota. Purchased: " + nLicensed
+                + " queries. Current usage: " + usage
+                + " queries.\nPlease upgrade your commercial license. Without commercial license FluentJPA is licensed under AGPLv3.");
     }
 
 
     private static void printBanner(String message) {
-        char[] dashes = new char[message.length()];
+
+        OptionalInt length = Arrays.stream(message.split("\n")).mapToInt(String::length).max();
+
+        char[] dashes = new char[length.orElse(50)];
         Arrays.fill(dashes, '#');
         System.out.println(dashes);
         System.out.println();
@@ -159,6 +177,20 @@ public final class FluentJPA {
         }
 
         LambdaExpression<?> parsed = LambdaExpression.parse(fluentQuery);
+
+        if (nLicensed > 0) {
+            Object key = parsed.getKey();
+            if (key == null) {
+                log.warn("Query without key: {}", parsed);
+            } else {
+                usage.add(key);
+                int currentUsage = usage.size();
+                if (nLicensed + nLicensedDelta < currentUsage) {
+                    nLicensedDelta += 5;
+                    reportUsageExceedsQuota(currentUsage);
+                }
+            }
+        }
 
         return new FluentQueryImpl(parsed, true);
     }
