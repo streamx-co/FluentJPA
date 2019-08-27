@@ -4,11 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.util.Collections;
 import java.util.List;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +28,11 @@ import co.streamx.fluent.JPA.repository.entities.Phone;
 import co.streamx.fluent.JPA.repository.entities.Student;
 
 public class EmployeeRepositoryTest extends IntegrationTest {
+
+    @BeforeAll
+    public static void init() {
+        FluentJPA.setCapabilities(Collections.emptySet());
+    }
 
     @Autowired
     private EmployeeRepository employeeRepository;

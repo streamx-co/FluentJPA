@@ -278,18 +278,18 @@ public class TestJPA implements CommonTest {
                        Student student,
                        JoinTable<Student, Course> coursesToStudents) -> {
 
-            SELECT(COUNT(coursesToStudents.getJoined().getId()));
-            FROM(course).JOIN(coursesToStudents)
-                    .ON(coursesToStudents.joinBy(course.getLikes()))
+            SELECT(COUNT(coursesToStudents.getInverseJoined().getId()));
+            FROM(coursesToStudents).JOIN(course)
+                    .ON(coursesToStudents.inverseJoin(course, Student::getLikedCourses))
                     .JOIN(student)
-                    .ON(coursesToStudents.joinBy(student.getLikedCourses()));
+                    .ON(coursesToStudents.join(student, Student::getLikedCourses));
 
             WHERE(course.getName() == name);
 
         });
 
         String expected = "SELECT COUNT(t2.course_id) "
-                + "FROM COURSE AS t0  INNER JOIN course_like AS t2  ON (t2.course_id = t0.id)  INNER JOIN STUDENT AS t1  ON (t2.student_id = t1.id) "
+                + "FROM course_like AS t2  INNER JOIN COURSE AS t0  ON (t2.course_id = t0.id)  INNER JOIN STUDENT AS t1  ON (t2.student_id = t1.id) "
                 + "WHERE (t0.name = ?1)";
         assertQuery(query, expected, new Object[] { name });
     }
@@ -300,7 +300,7 @@ public class TestJPA implements CommonTest {
         FluentQuery query = FluentJPA.SQL((Student student,
                                            JoinTable<Student, Course> coursesToStudents) -> {
 
-            discardSQL(coursesToStudents.joinBy(student.getLikedCourses()));
+            discardSQL(coursesToStudents.join(student, Student::getLikedCourses));
 
             INSERT().INTO(viewOf(coursesToStudents, jt -> jt.getJoined().getId(), jt -> jt.getInverseJoined().getId()));
             VALUES(row(1, 2));
@@ -365,7 +365,7 @@ public class TestJPA implements CommonTest {
         FluentQuery query = FluentJPA.SQL((Gemstone gemstone,
                                            JoinTable<Gemstone, Product> gemstoneProduct) -> {
 
-            discardSQL(gemstoneProduct.joinBy(gemstone.getProducts()));
+            discardSQL(gemstoneProduct.join(gemstone, Gemstone::getProducts));
 
             long productId = gemstoneProduct.getInverseJoined().getProductId();
             long gemstoneId = gemstoneProduct.getJoined().getGemstoneId();

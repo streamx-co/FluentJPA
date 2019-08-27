@@ -1,8 +1,11 @@
 package co.streamx.fluent.JPA;
 
 import java.util.List;
+import java.util.function.Function;
 
 import co.streamx.fluent.JPA.DSLInterpreterHelpers.ParameterRef;
+import co.streamx.fluent.JPA.JPAHelpers.Association;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 interface IdentifierPath extends UnboundCharSequence {
@@ -11,6 +14,8 @@ interface IdentifierPath extends UnboundCharSequence {
     CharSequence resolve(IdentifierPath path);
 
     CharSequence current();
+
+    Class<?> getDeclaringClass();
 
     public static final char DOT = '.';
 
@@ -30,6 +35,9 @@ interface IdentifierPath extends UnboundCharSequence {
     @RequiredArgsConstructor
     public class Resolved implements IdentifierPath {
         private final CharSequence resolution;
+
+        @Getter
+        private final Class<?> declaringClass;
 
         @Override
         public int length() {
@@ -56,7 +64,7 @@ interface IdentifierPath extends UnboundCharSequence {
                 return this;
             if (inst instanceof IdentifierPath)
                 return ((IdentifierPath) inst).resolve(this);
-            return new Resolved(new StringBuilder(inst).append(DOT).append(resolution).toString());
+            return new Resolved(new StringBuilder(inst).append(DOT).append(resolution).toString(), declaringClass);
         }
 
         @Override
@@ -79,12 +87,17 @@ interface IdentifierPath extends UnboundCharSequence {
     public class MultiColumnIdentifierPath implements IdentifierPath {
 
         private final String originalField;
-        private final JPAHelpers.Association association;
+        private final Function<Class<?>, JPAHelpers.Association> associationSupplier;
         private CharSequence inst;
 
         private RuntimeException error() {
             return new IllegalStateException("'" + originalField
                     + "' has multi-column mapping. You must call the appropriate property to resolve it");
+        }
+
+        @Override
+        public Class<?> getDeclaringClass() {
+            throw new UnsupportedOperationException();
         }
 
         @Override
@@ -127,11 +140,13 @@ interface IdentifierPath extends UnboundCharSequence {
             if (!(path instanceof Resolved))
                 throw new IllegalArgumentException(path.getClass() + ":" + path.current());
             CharSequence key = path.current();
+            Association association = associationSupplier.apply(path.getDeclaringClass());
             List<CharSequence> referenced = association.getRight();
             for (int i = 0; i < referenced.size(); i++) {
                 CharSequence seq = referenced.get(i);
                 if (Strings.equals(seq, key)) {
-                    return new Resolved(new StringBuilder(inst).append(DOT).append(association.getLeft().get(i)));
+                    return new Resolved(new StringBuilder(inst).append(DOT).append(association.getLeft().get(i)),
+                            path.getDeclaringClass());
                 }
             }
             throw new IllegalArgumentException("Column '" + key + "' not found in PK: " + referenced);

@@ -596,7 +596,16 @@ final class DSLInterpreter
                     joinTablesForFROM = new HashMap<>();
                 }
 
-                Expression arg = invocationArguments.get(0);
+                Expression arg = invocationArguments.get(1);
+                while (arg instanceof UnaryExpression)
+                    arg = ((UnaryExpression) arg).getFirst();
+                if (!(arg instanceof LambdaExpression)) {
+                    throw TranslationError.NOT_PROPERTY_CALL.getError(arg);
+                }
+
+                LambdaExpression<?> lambda = (LambdaExpression<?>) arg;
+                arg = lambda.getBody();
+
                 if (!(arg instanceof InvocationExpression)) {
                     throw TranslationError.NOT_PROPERTY_CALL.getError(arg);
                 }
@@ -726,8 +735,7 @@ final class DSLInterpreter
                         CharSequence lseq = inst;
                         return pp -> {
                             Association association = getAssociationMTM(tableJoinMember, tableJoin.inverse());
-                            return renderAssociation(out, association, aliases, lseq,
-                                    tableJoin.inverse() ? pp.get(1) : pp.get(0));
+                            return renderAssociation(out, association, aliases, lseq, pp.get(0));
                         };
                     }
 
@@ -738,9 +746,10 @@ final class DSLInterpreter
                             Member member = joinTablesForFROM.get(lseq);
                             if (member == null)
                                 throw TranslationError.ASSOCIATION_NOT_INITED.getError(m);
-                            Association association = getAssociationMTM(member, tableJoinProperty.inverse());
-                            return new IdentifierPath.MultiColumnIdentifierPath(m.getName(), association)
-                                    .resolveInstance(lseq);
+
+                            return new IdentifierPath.MultiColumnIdentifierPath(m.getName(),
+                                    clazz -> getAssociationMTM(member,
+                                            !member.getDeclaringClass().isAssignableFrom(clazz))).resolveInstance(lseq);
                         };
                     }
 

@@ -506,19 +506,19 @@ final class JPAHelpers {
         if (column != null) {
             String cname = column.name();
             if (!Strings.isNullOrEmpty(cname))
-                return new IdentifierPath.Resolved(cname);
+                return new IdentifierPath.Resolved(cname, field.getDeclaringClass());
         }
 
         JoinColumn join = ((AnnotatedElement) field).getAnnotation(JoinColumn.class);
         if (join != null) {
             String cname = join.name();
             if (!Strings.isNullOrEmpty(cname))
-                return new IdentifierPath.Resolved(cname);
+                return new IdentifierPath.Resolved(cname, field.getDeclaringClass());
         }
 
         JoinColumns joins = ((AnnotatedElement) field).getAnnotation(JoinColumns.class);
         if (joins != null)
-            return new IdentifierPath.MultiColumnIdentifierPath(field.getName(), getAssociation(field, true));
+            return new IdentifierPath.MultiColumnIdentifierPath(field.getName(), c -> getAssociation(field, true));
 
         MapsId mapsId = ((AnnotatedElement) field).getAnnotation(MapsId.class);
         if (mapsId != null) {
@@ -528,16 +528,18 @@ final class JPAHelpers {
             String idPath = mapsId.value();
             if (Strings.isNullOrEmpty(idPath)) {
                 // should be the sole PK column
-                return entityIds.size() == 1 ? new IdentifierPath.Resolved(entityIds.get(0).getColumn())
+                return entityIds.size() == 1
+                        ? new IdentifierPath.Resolved(entityIds.get(0).getColumn(), field.getDeclaringClass())
                         : // if this case is possible, we are covered
-                        new IdentifierPath.MultiColumnIdentifierPath(field.getName(), getAssociation(field, true));
+                        new IdentifierPath.MultiColumnIdentifierPath(field.getName(), c -> getAssociation(field, true));
             }
 
             return new IdentifierPath.Resolved(
-                    entityIds.stream().filter(id -> isIDMapped(id, idPath)).findFirst().get().getColumn());
+                    entityIds.stream().filter(id -> isIDMapped(id, idPath)).findFirst().get().getColumn(),
+                    field.getDeclaringClass());
         }
 
-        return new IdentifierPath.Resolved(toDBNotation(getFieldName(field)));
+        return new IdentifierPath.Resolved(toDBNotation(getFieldName(field)), field.getDeclaringClass());
     }
 
     private static ClassMeta getClassMeta(Class<?> declaringClass) {

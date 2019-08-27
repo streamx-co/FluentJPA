@@ -28,4 +28,8 @@ public interface CommonTest {
         assertQuery(query, expected);
         assertArrayEquals(expectedArguments, query.getOrdinalParameters().toArray());
     }
+
+    default Object[] arrayOf(Object... objects) {
+        return objects;
+    }
 }
