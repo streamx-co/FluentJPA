@@ -4,7 +4,7 @@
 	<name>Java Fluent JPA</name>
 	<groupId>co.streamx.fluent</groupId>
 	<artifactId>fluent-jpa</artifactId>
-	<version>1.0.11</version>
+	<version>1.0.12-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<url>https://github.com/streamx-co/FluentJPA</url>
 
@@ -38,7 +38,7 @@
         <connection>scm:git:git@github.com:streamx-co/FluentJPA.git</connection>
         <developerConnection>scm:git:git@github.com:streamx-co/FluentJPA.git</developerConnection>
         <url>scm:git:git@github.com:streamx-co/FluentJPA.git</url>
-        <tag>fluent-jpa-1.0.11</tag>
+        <tag>HEAD</tag>
     </scm>
 
 	<dependencyManagement>
