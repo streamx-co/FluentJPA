@@ -1,7 +1,6 @@
 package co.streamx.fluent.JPA;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
@@ -178,8 +177,20 @@ final class JPAHelpers {
         }
     }
 
+    public static CharSequence calcOverrides(CharSequence instance,
+                                             Member field) {
+        field = getAnnotatedField(field);
+        AnnotatedElement annotated = (AnnotatedElement) field;
+
+        Map<String, String> overrides = calcOverrides(annotated);
+        if (overrides.isEmpty())
+            return instance;
+
+        return new IdentifierPath.ColumnOverridingIdentifierPath(field.getName(), overrides).resolveInstance(instance);
+    }
+
     // TODO: overrides for MappedClass objects
-    private static Map<String, String> calcOverrides(AccessibleObject member) {
+    private static Map<String, String> calcOverrides(AnnotatedElement member) {
         AttributeOverride override = member.getAnnotation(AttributeOverride.class);
         if (override != null)
             return Collections.singletonMap(override.name(), override.column().name());
@@ -543,11 +554,11 @@ final class JPAHelpers {
     }
 
     public static boolean isEmbeddable(Class<?> entity) {
-        return entity.isAnnotationPresent(Embedded.class);
+        return entity.isAnnotationPresent(Embeddable.class);
     }
 
     public static boolean isEmbedded(Member field) {
-        return getAnnotationFromProperty(field, Embeddable.class) != null;
+        return getAnnotationFromProperty(field, Embedded.class) != null;
     }
 
     private static IdentifierPath getColumnName(Member field) {
@@ -555,14 +566,14 @@ final class JPAHelpers {
         if (column != null) {
             String cname = column.name();
             if (!Strings.isNullOrEmpty(cname))
-                return new IdentifierPath.Resolved(cname, field.getDeclaringClass());
+                return new IdentifierPath.Resolved(cname, field.getDeclaringClass(), field.getName());
         }
 
         JoinColumn join = ((AnnotatedElement) field).getAnnotation(JoinColumn.class);
         if (join != null) {
             String cname = join.name();
             if (!Strings.isNullOrEmpty(cname))
-                return new IdentifierPath.Resolved(cname, field.getDeclaringClass());
+                return new IdentifierPath.Resolved(cname, field.getDeclaringClass(), field.getName());
         }
 
         JoinColumns joins = ((AnnotatedElement) field).getAnnotation(JoinColumns.class);
@@ -578,17 +589,19 @@ final class JPAHelpers {
             if (Strings.isNullOrEmpty(idPath)) {
                 // should be the sole PK column
                 return entityIds.size() == 1
-                        ? new IdentifierPath.Resolved(entityIds.get(0).getColumn(), field.getDeclaringClass())
+                        ? new IdentifierPath.Resolved(entityIds.get(0).getColumn(), field.getDeclaringClass(),
+                                field.getName())
                         : // if this case is possible, we are covered
                         new IdentifierPath.MultiColumnIdentifierPath(field.getName(), c -> getAssociation(field, true));
             }
 
             return new IdentifierPath.Resolved(
                     entityIds.stream().filter(id -> isIDMapped(id, idPath)).findFirst().get().getColumn(),
-                    field.getDeclaringClass());
+                    field.getDeclaringClass(), field.getName());
         }
 
-        return new IdentifierPath.Resolved(toDBNotation(getFieldName(field)), field.getDeclaringClass());
+        return new IdentifierPath.Resolved(toDBNotation(getFieldName(field)), field.getDeclaringClass(),
+                field.getName());
     }
 
     private static ClassMeta getClassMeta(Class<?> declaringClass) {
@@ -692,7 +705,7 @@ final class JPAHelpers {
         }
 
         Member f = field;
-        Supplier<Class<?>> targetSupplier = () -> getTargetForEC(f);
+        Supplier<Class<?>> targetSupplier = () -> getTargetForECAnnotated(f);
         return getJoinTableName(field, name, catalog, schema, targetSupplier);
     }
 
@@ -708,7 +721,11 @@ final class JPAHelpers {
         return target;
     }
 
-    private static Class<?> getTargetForEC(Member field) {
+    public static Class<?> getTargetForEC(Member field) {
+        return getTargetForECAnnotated(getAnnotatedField(field));
+    }
+
+    private static Class<?> getTargetForECAnnotated(Member field) {
 
         AnnotatedElement annotated = (AnnotatedElement) field;
         ElementCollection mtm = annotated.getAnnotation(ElementCollection.class);

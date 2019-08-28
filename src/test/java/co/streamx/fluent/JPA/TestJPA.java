@@ -405,4 +405,28 @@ public class TestJPA implements CommonTest {
         // @formatter:on
         assertQuery(query, expected, new Object[] { id });
     }
+
+    @Test
+    public void EC2() throws Exception {
+
+        Long id = 1L;
+        FluentQuery query = FluentJPA.SQL((User user,
+                                           ElementCollection<User, String> userPhones) -> {
+
+            discardSQL(userPhones.join(user, User::getPhoneNumbers));
+
+            SELECT(userPhones.getElement());
+            FROM(userPhones);
+
+            WHERE(userPhones.getOwner().getId() == id);
+
+        });
+
+        // @formatter:off
+        String expected = "SELECT phone_number " + 
+                "FROM EC.user_phone_numbers AS t1 " + 
+                "WHERE (t1.user_id = ?1)";
+        // @formatter:on
+        assertQuery(query, expected, new Object[] { id });
+    }
 }

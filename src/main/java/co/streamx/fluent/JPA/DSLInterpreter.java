@@ -1,5 +1,6 @@
 package co.streamx.fluent.JPA;
 
+import static co.streamx.fluent.JPA.JPAHelpers.calcOverrides;
 import static co.streamx.fluent.JPA.JPAHelpers.getAssociation;
 import static co.streamx.fluent.JPA.JPAHelpers.getAssociationElementCollection;
 import static co.streamx.fluent.JPA.JPAHelpers.getAssociationMTM;
@@ -7,6 +8,7 @@ import static co.streamx.fluent.JPA.JPAHelpers.getColumnNameFromProperty;
 import static co.streamx.fluent.JPA.JPAHelpers.getECTableName;
 import static co.streamx.fluent.JPA.JPAHelpers.getJoinTableName;
 import static co.streamx.fluent.JPA.JPAHelpers.getTableName;
+import static co.streamx.fluent.JPA.JPAHelpers.getTargetForEC;
 import static co.streamx.fluent.JPA.JPAHelpers.isCollection;
 import static co.streamx.fluent.JPA.JPAHelpers.isEmbeddable;
 import static co.streamx.fluent.JPA.JPAHelpers.isEmbedded;
@@ -742,14 +744,28 @@ final class DSLInterpreter
                     Property tableColProperty = m.getAnnotation(TableCollection.Property.class);
                     if (tableColProperty != null) {
                         CharSequence lseq = inst;
-                        return pp -> {
-                            Member member = collectionTablesForFROM.get(lseq);
-                            if (member == null)
-                                throw TranslationError.ASSOCIATION_NOT_INITED.getError(m);
+                        if (tableColProperty.owner()) {
+                            return pp -> {
+                                Member member = collectionTablesForFROM.get(lseq);
+                                if (member == null)
+                                    throw TranslationError.ASSOCIATION_NOT_INITED.getError(m);
 
-                            return new IdentifierPath.MultiColumnIdentifierPath(m.getName(),
-                                    clazz -> getAssociationElementCollection(member)).resolveInstance(lseq);
-                        };
+                                return new IdentifierPath.MultiColumnIdentifierPath(m.getName(),
+                                        clazz -> getAssociationElementCollection(member)).resolveInstance(lseq);
+                            };
+                        } else {
+                            return pp -> {
+                                Member member = collectionTablesForFROM.get(lseq);
+                                if (member == null)
+                                    throw TranslationError.ASSOCIATION_NOT_INITED.getError(m);
+
+                                Class<?> target = getTargetForEC(member);
+                                if (!isEmbeddable(target))
+                                    return getColumnNameFromProperty(member);
+                                return new IdentifierPath.MultiColumnIdentifierPath(m.getName(),
+                                        clazz -> getAssociationElementCollection(member)).resolveInstance(lseq);
+                            };
+                        }
                     }
 
                     inst = resolveLabel(aliases, inst);
@@ -924,12 +940,13 @@ final class DSLInterpreter
 
                     if (isEmbeddable(m.getReturnType()) || isCollection(m.getReturnType()) || isEmbedded(m))
                         // embedded
-                        return out;
+                        return calcOverrides(out, m);
 
                     IdentifierPath columnName = getColumnNameFromProperty(m);
 
                     if (m.getParameterCount() > 0) // assignment
-                        return new StringBuilder(columnName).append(KEYWORD_DELIMITER + EQUAL_SIGN + KEYWORD_DELIMITER)
+                        return new StringBuilder(columnName.resolveOverrides(instFinal))
+                                .append(KEYWORD_DELIMITER + EQUAL_SIGN + KEYWORD_DELIMITER)
                                 .append(pp.get(0));
 
                     if (instFinal != null) {

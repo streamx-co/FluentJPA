@@ -15,7 +15,7 @@ enum TranslationError {
     UNSUPPORTED_EXPRESSION_TYPE("Unsupported operator: {0}"),
     INSTANCE_NOT_JOINTABLE("Not a JoinTable instance: {0}"),
     NOT_PROPERTY_CALL("Must pass a getter call: {0}"),
-    ASSOCIATION_NOT_INITED("Association not initialized for {0}. Missed joinBy() call?"),
+    ASSOCIATION_NOT_INITED("Association not initialized for {0}. Missed join() call?"),
     ALIAS_NOT_SPECIFIED("Alias not specified for index: {0}"),
     UNMAPPED_FIELD(
             "Cannot translate property: {0}. FluentJPA methods must be either static, interface default or annotated with @Local") {

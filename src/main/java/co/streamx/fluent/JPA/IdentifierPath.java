@@ -1,6 +1,7 @@
 package co.streamx.fluent.JPA;
 
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import co.streamx.fluent.JPA.DSLInterpreterHelpers.ParameterRef;
@@ -15,7 +16,18 @@ interface IdentifierPath extends UnboundCharSequence {
 
     CharSequence current();
 
+    default CharSequence resolveOverrides(CharSequence path) {
+        CharSequence x = (path instanceof IdentifierPath) ? ((IdentifierPath) path).getOverride(getFieldName()) : null;
+        return x != null ? x : current();
+    }
+
+    default CharSequence getOverride(CharSequence path) {
+        return null;
+    }
+
     Class<?> getDeclaringClass();
+
+    String getFieldName();
 
     public static final char DOT = '.';
 
@@ -33,11 +45,14 @@ interface IdentifierPath extends UnboundCharSequence {
     }
 
     @RequiredArgsConstructor
-    public class Resolved implements IdentifierPath {
+    final class Resolved implements IdentifierPath {
         private final CharSequence resolution;
 
         @Getter
         private final Class<?> declaringClass;
+
+        @Getter
+        private final String fieldName;
 
         @Override
         public int length() {
@@ -64,7 +79,8 @@ interface IdentifierPath extends UnboundCharSequence {
                 return this;
             if (inst instanceof IdentifierPath)
                 return ((IdentifierPath) inst).resolve(this);
-            return new Resolved(new StringBuilder(inst).append(DOT).append(resolution).toString(), declaringClass);
+            return new Resolved(new StringBuilder(inst).append(DOT).append(resolution).toString(), declaringClass,
+                    fieldName);
         }
 
         @Override
@@ -84,14 +100,14 @@ interface IdentifierPath extends UnboundCharSequence {
     }
 
     @RequiredArgsConstructor
-    public class MultiColumnIdentifierPath implements IdentifierPath {
+    @Getter
+    abstract class AssociativeIdentifierPath implements IdentifierPath {
 
-        private final String originalField;
-        private final Function<Class<?>, JPAHelpers.Association> associationSupplier;
-        private CharSequence inst;
+        private final String fieldName;
+        private CharSequence instance;
 
         private RuntimeException error() {
-            return new IllegalStateException("'" + originalField
+            return new IllegalStateException("'" + fieldName
                     + "' has multi-column mapping. You must call the appropriate property to resolve it");
         }
 
@@ -123,16 +139,27 @@ interface IdentifierPath extends UnboundCharSequence {
 
         @Override
         public CharSequence current() {
-            return inst;
+            return instance;
         }
 
         @Override
         public CharSequence resolveInstance(CharSequence inst) {
-            if (this.inst != null)
-                new IllegalStateException("Already initialized with '" + this.inst + "' instance. Passing a new '"
+            if (this.instance != null)
+                new IllegalStateException("Already initialized with '" + this.instance + "' instance. Passing a new '"
                         + inst + "' is illegal");
-            this.inst = inst;
+            this.instance = inst;
             return this;
+        }
+    }
+
+    final class MultiColumnIdentifierPath extends AssociativeIdentifierPath {
+
+        private final Function<Class<?>, JPAHelpers.Association> associationSupplier;
+
+        public MultiColumnIdentifierPath(String originalField,
+                Function<Class<?>, JPAHelpers.Association> associationSupplier) {
+            super(originalField);
+            this.associationSupplier = associationSupplier;
         }
 
         @Override
@@ -145,12 +172,40 @@ interface IdentifierPath extends UnboundCharSequence {
             for (int i = 0; i < referenced.size(); i++) {
                 CharSequence seq = referenced.get(i);
                 if (Strings.equals(seq, key)) {
-                    return new Resolved(new StringBuilder(inst).append(DOT).append(association.getLeft().get(i)),
-                            path.getDeclaringClass());
+                    return new Resolved(
+                            new StringBuilder(getInstance()).append(DOT).append(association.getLeft().get(i)),
+                            path.getDeclaringClass(), path.getFieldName());
                 }
             }
             throw new IllegalArgumentException("Column '" + key + "' not found in PK: " + referenced);
         }
+    }
 
+    final class ColumnOverridingIdentifierPath extends AssociativeIdentifierPath {
+
+        private final Map<String, String> overrides;
+
+        public ColumnOverridingIdentifierPath(String originalField,
+                Map<String, String> overrides) {
+            super(originalField);
+            this.overrides = overrides;
+        }
+
+        @Override
+        public CharSequence resolve(IdentifierPath path) {
+            if (!(path instanceof Resolved))
+                throw new IllegalArgumentException(path.getClass() + ":" + path.current());
+            String key = path.getFieldName();
+            String override = overrides.get(key);
+            CharSequence column = override != null ? override : path.current();
+
+            return new Resolved(new StringBuilder(getInstance()).append(DOT).append(column), path.getDeclaringClass(),
+                    key);
+        }
+
+        @Override
+        public CharSequence getOverride(CharSequence path) {
+            return overrides.get(path.toString());
+        }
     }
 }

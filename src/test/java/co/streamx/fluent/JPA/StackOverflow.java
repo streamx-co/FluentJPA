@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
+import javax.persistence.AttributeOverride;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Embeddable;
@@ -297,6 +298,7 @@ public class StackOverflow implements CommonTest {
     public static class EntityA {
 
         @Embedded
+        @AttributeOverride(name = "normalString2", column = @Column(name = "normal_string3"))
         private EmbeddedEntity embeddedEntity;
         @Column(name = "NORMAL_STRING")
         private String normalString;
@@ -311,7 +313,7 @@ public class StackOverflow implements CommonTest {
 
         FluentQuery query = updateEntity(string1, string2);
 
-        String expected = "UPDATE ENTITY_A t0  SET NORMAL_STRING = ?1 " + "normal_string2 = ?2";
+        String expected = "UPDATE ENTITY_A t0  SET NORMAL_STRING = ?1 " + "normal_string3 = ?2";
 
         assertQuery(query, expected);
     }
