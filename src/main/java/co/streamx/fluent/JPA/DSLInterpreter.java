@@ -1,8 +1,10 @@
 package co.streamx.fluent.JPA;
 
 import static co.streamx.fluent.JPA.JPAHelpers.getAssociation;
+import static co.streamx.fluent.JPA.JPAHelpers.getAssociationElementCollection;
 import static co.streamx.fluent.JPA.JPAHelpers.getAssociationMTM;
 import static co.streamx.fluent.JPA.JPAHelpers.getColumnNameFromProperty;
+import static co.streamx.fluent.JPA.JPAHelpers.getECTableName;
 import static co.streamx.fluent.JPA.JPAHelpers.getJoinTableName;
 import static co.streamx.fluent.JPA.JPAHelpers.getTableName;
 import static co.streamx.fluent.JPA.JPAHelpers.isCollection;
@@ -26,6 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -56,8 +59,9 @@ import co.streamx.fluent.notation.Operator;
 import co.streamx.fluent.notation.Parameter;
 import co.streamx.fluent.notation.ParameterContext;
 import co.streamx.fluent.notation.SubQuery;
+import co.streamx.fluent.notation.TableCollection;
+import co.streamx.fluent.notation.TableCollection.Property;
 import co.streamx.fluent.notation.TableJoin;
-import co.streamx.fluent.notation.TableJoin.Property;
 import co.streamx.fluent.notation.ViewDeclaration;
 import lombok.Getter;
 import lombok.NonNull;
@@ -101,6 +105,8 @@ final class DSLInterpreter
     // join table
     private Map<ParameterExpression, Member> joinTables = Collections.emptyMap();
     private Map<CharSequence, Member> joinTablesForFROM = Collections.emptyMap();
+    private Map<ParameterExpression, Member> collectionTables = Collections.emptyMap();
+    private Map<CharSequence, Member> collectionTablesForFROM = Collections.emptyMap();
     private Map<ParameterExpression, ParameterExpression> parameterBackwardMap = new HashMap<>();
 
     // View
@@ -575,56 +581,29 @@ final class DSLInterpreter
                 };
             }
 
-            Member tableJoinMember;
             TableJoin tableJoin = m.getAnnotation(TableJoin.class);
-            if (tableJoin != null) {
+            Member tableJoinMember = (tableJoin != null)
+                    ? getJoinMember(ei, invocationArguments, instanceArguments, () -> {
+                        if (joinTables.isEmpty()) {
+                            joinTables = new HashMap<>();
+                            joinTablesForFROM = new HashMap<>();
+                        }
 
-                if (!(ei instanceof ParameterExpression)) {
-                    throw TranslationError.INSTANCE_NOT_JOINTABLE.getError(ei);
-                }
+                        return joinTables;
+                    })
+                    : null;
 
-                Expression actual = instanceArguments.get(((ParameterExpression) ei).getIndex());
+            TableCollection tableCol = m.getAnnotation(TableCollection.class);
+            Member tableColMember = (tableCol != null)
+                    ? getJoinMember(ei, invocationArguments, instanceArguments, () -> {
+                        if (collectionTables.isEmpty()) {
+                            collectionTables = new HashMap<>();
+                            collectionTablesForFROM = new HashMap<>();
+                        }
 
-                if (!(actual instanceof ParameterExpression)) {
-                    throw TranslationError.INSTANCE_NOT_JOINTABLE.getError(ei);
-                }
-
-                ParameterExpression actualParam = (ParameterExpression) actual;
-
-                if (joinTables.isEmpty()) {
-                    joinTables = new HashMap<>();
-                    joinTablesForFROM = new HashMap<>();
-                }
-
-                Expression arg = invocationArguments.get(1);
-                while (arg instanceof UnaryExpression)
-                    arg = ((UnaryExpression) arg).getFirst();
-                if (!(arg instanceof LambdaExpression)) {
-                    throw TranslationError.NOT_PROPERTY_CALL.getError(arg);
-                }
-
-                LambdaExpression<?> lambda = (LambdaExpression<?>) arg;
-                arg = lambda.getBody();
-
-                if (!(arg instanceof InvocationExpression)) {
-                    throw TranslationError.NOT_PROPERTY_CALL.getError(arg);
-                }
-
-                InvocableExpression target = ((InvocationExpression) arg).getTarget();
-                if (!(target instanceof MemberExpression)) {
-                    throw TranslationError.NOT_PROPERTY_CALL.getError(target);
-                }
-
-                tableJoinMember = ((MemberExpression) target).getMember();
-
-                while (actualParam != null) {
-                    joinTables.put(actualParam, tableJoinMember);
-                    actualParam = parameterBackwardMap.get(actualParam);
-                }
-            }
-            else {
-                tableJoinMember = null;
-            }
+                        return collectionTables;
+                    })
+                    : null;
 
             SubQueryManager subQueries = getSubQueries();
             Map<CharSequence, CharSequence> aliases = getAliases();
@@ -739,8 +718,15 @@ final class DSLInterpreter
                         };
                     }
 
-                    Property tableJoinProperty = m.getAnnotation(TableJoin.Property.class);
-                    if (tableJoinProperty != null) {
+                    if (tableCol != null) {
+                        CharSequence lseq = inst;
+                        return pp -> {
+                            Association association = getAssociationElementCollection(tableColMember);
+                            return renderAssociation(out, association, aliases, lseq, pp.get(0));
+                        };
+                    }
+
+                    if (m.isAnnotationPresent(TableJoin.Property.class)) {
                         CharSequence lseq = inst;
                         return pp -> {
                             Member member = joinTablesForFROM.get(lseq);
@@ -750,6 +736,19 @@ final class DSLInterpreter
                             return new IdentifierPath.MultiColumnIdentifierPath(m.getName(),
                                     clazz -> getAssociationMTM(member,
                                             !member.getDeclaringClass().isAssignableFrom(clazz))).resolveInstance(lseq);
+                        };
+                    }
+
+                    Property tableColProperty = m.getAnnotation(TableCollection.Property.class);
+                    if (tableColProperty != null) {
+                        CharSequence lseq = inst;
+                        return pp -> {
+                            Member member = collectionTablesForFROM.get(lseq);
+                            if (member == null)
+                                throw TranslationError.ASSOCIATION_NOT_INITED.getError(m);
+
+                            return new IdentifierPath.MultiColumnIdentifierPath(m.getName(),
+                                    clazz -> getAssociationElementCollection(member)).resolveInstance(lseq);
                         };
                     }
 
@@ -945,6 +944,53 @@ final class DSLInterpreter
         };
     }
 
+    private Member getJoinMember(Expression ei,
+                                 List<Expression> invocationArguments,
+                                 List<Expression> instanceArguments,
+                                 Supplier<Map<ParameterExpression, Member>> joinMapSupplier) {
+        Member tableJoinMember;
+        if (!(ei instanceof ParameterExpression)) {
+            throw TranslationError.INSTANCE_NOT_JOINTABLE.getError(ei);
+        }
+
+        Expression actual = instanceArguments.get(((ParameterExpression) ei).getIndex());
+
+        if (!(actual instanceof ParameterExpression)) {
+            throw TranslationError.INSTANCE_NOT_JOINTABLE.getError(ei);
+        }
+
+        ParameterExpression actualParam = (ParameterExpression) actual;
+
+        Map<ParameterExpression, Member> joinMap = joinMapSupplier.get();
+
+        Expression arg = invocationArguments.get(1);
+        while (arg instanceof UnaryExpression)
+            arg = ((UnaryExpression) arg).getFirst();
+        if (!(arg instanceof LambdaExpression)) {
+            throw TranslationError.NOT_PROPERTY_CALL.getError(arg);
+        }
+
+        LambdaExpression<?> lambda = (LambdaExpression<?>) arg;
+        arg = lambda.getBody();
+
+        if (!(arg instanceof InvocationExpression)) {
+            throw TranslationError.NOT_PROPERTY_CALL.getError(arg);
+        }
+
+        InvocableExpression target = ((InvocationExpression) arg).getTarget();
+        if (!(target instanceof MemberExpression)) {
+            throw TranslationError.NOT_PROPERTY_CALL.getError(target);
+        }
+
+        tableJoinMember = ((MemberExpression) target).getMember();
+
+        while (actualParam != null) {
+            joinMap.put(actualParam, tableJoinMember);
+            actualParam = parameterBackwardMap.get(actualParam);
+        }
+        return tableJoinMember;
+    }
+
     private CharSequence handleView(CharSequence result,
                                            final Method m,
                                            List<CharSequence> originalParams) {
@@ -972,7 +1018,14 @@ final class DSLInterpreter
     private CharSequence resolveTableName(CharSequence seq,
                                        Class<?> resultType) {
         Member joinTable = joinTablesForFROM.get(seq);
-        return joinTable != null ? getJoinTableName(joinTable) : getTableName(resultType);
+        if (joinTable != null)
+            return getJoinTableName(joinTable);
+
+        joinTable = collectionTablesForFROM.get(seq);
+        if (joinTable != null)
+            return getECTableName(joinTable);
+
+        return getTableName(resultType);
     }
 
     private CharSequence handleFromClause(CharSequence seq,
@@ -1099,6 +1152,11 @@ final class DSLInterpreter
         Member joinTable = joinTables.get(e);
         if (joinTable != null)
             joinTablesForFROM.put(seq, joinTable);
+        else {
+            joinTable = collectionTables.get(e);
+            if (joinTable != null)
+                collectionTablesForFROM.put(seq, joinTable);
+        }
         return seq;
     }
 

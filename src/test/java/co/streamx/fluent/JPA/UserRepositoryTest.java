@@ -1,13 +1,13 @@
 package co.streamx.fluent.JPA;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.HashSet;
-import java.util.Optional;
 import java.util.Set;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,9 +22,14 @@ public class UserRepositoryTest extends IntegrationTest implements ElementCollec
 
     @Test
     @Transactional()
-    @Disabled
     public void test1() {
 
+        User user = setup();
+
+        assertThat(userRepository.countPhones(user)).isEqualTo(2);
+    }
+
+    private User setup() {
         // Insert a user with multiple phone numbers and addresses.
         Set<String> phoneNumbers = new HashSet<>();
         phoneNumbers.add("+91-9999999999");
@@ -40,11 +45,6 @@ public class UserRepositoryTest extends IntegrationTest implements ElementCollec
 
         em.flush();
         em.clear();
-
-        Optional<User> found = userRepository.findById(user.getId());
-
-        System.out.println(found);
-
-        userRepository.countPhones(user);
+        return user;
     }
 }

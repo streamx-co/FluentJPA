@@ -21,7 +21,9 @@ import java.util.stream.Collectors;
 import javax.persistence.AccessType;
 import javax.persistence.AttributeOverride;
 import javax.persistence.AttributeOverrides;
+import javax.persistence.CollectionTable;
 import javax.persistence.Column;
+import javax.persistence.ElementCollection;
 import javax.persistence.Embeddable;
 import javax.persistence.Embedded;
 import javax.persistence.EmbeddedId;
@@ -266,6 +268,43 @@ final class JPAHelpers {
         throw new IllegalStateException("association was not resolved for " + field + ".");
     }
 
+    public static Association getAssociationElementCollection(Member field) {
+
+        field = getAnnotatedField(field);
+        AnnotatedElement leftField = (AnnotatedElement) field;
+
+        ElementCollection elemCollection = leftField.getAnnotation(ElementCollection.class);
+        if (elemCollection != null) {
+
+            Class<?> declaringClass = field.getDeclaringClass();
+
+            List<CharSequence> entity = null;
+            List<CharSequence> join = null;
+
+            CollectionTable colTable = leftField.getAnnotation(CollectionTable.class);
+            String declaringTableName = getTableName(declaringClass);
+            if (colTable != null) {
+                JoinColumn[] columns = colTable.joinColumns();
+                if (columns != null) {
+
+                    join = new ArrayList<>();
+                    entity = buildVTableJoins(field, join, columns, declaringTableName, declaringClass);
+                }
+            }
+
+            if (entity == null) {
+                entity = Streams.map(getClassMeta(declaringClass).getIds(), ID::getColumn);
+                join = entity.stream()
+                        .map(col -> concatWithUnderscore(declaringTableName, col))
+                        .collect(Collectors.toList());
+            }
+
+            return new Association(join, entity, true);
+        }
+
+        throw new IllegalStateException("association was not resolved for " + field + ".");
+    }
+
     public static Association getAssociationMTM(Member field,
                                                 boolean inverse) {
         field = getAnnotatedField(field);
@@ -298,29 +337,7 @@ final class JPAHelpers {
                 if (columns != null) {
 
                     join = new ArrayList<>();
-                    for (int i = 0; i < columns.length; i++) {
-                        JoinColumn column = columns[i];
-                        String columnName = column.name();
-                        String referencedColumnName = column.referencedColumnName();
-
-                        if (Strings.isNullOrEmpty(referencedColumnName)) {
-                            if (entity == null)
-                                entity = Streams.map(getClassMeta(declaringClass).getIds(), ID::getColumn);
-
-                            if (entity.get(i) == null) {
-                                throw new IllegalStateException(
-                                        "referencedColumnName not specified on field: " + field);
-                            }
-                        } else {
-                            if (entity == null)
-                                entity = new ArrayList<>();
-                            entity.set(i, referencedColumnName);
-                        }
-
-                        join.add(Strings.isNullOrEmpty(columnName)
-                                ? concatWithUnderscore(declaringTableName, entity.get(i))
-                                : columnName);
-                    }
+                    entity = buildVTableJoins(field, join, columns, declaringTableName, declaringClass);
                 }
             }
 
@@ -335,6 +352,38 @@ final class JPAHelpers {
         }
 
         throw new IllegalStateException("association was not resolved for " + field + ".");
+    }
+
+    private static List<CharSequence> buildVTableJoins(Member field,
+                                                       List<CharSequence> join,
+                                                       JoinColumn[] columns,
+                                                       String declaringTableName,
+                                                       Class<?> declaringClass) {
+        List<CharSequence> entity = null;
+        for (int i = 0; i < columns.length; i++) {
+            JoinColumn column = columns[i];
+            String columnName = column.name();
+            String referencedColumnName = column.referencedColumnName();
+
+            if (Strings.isNullOrEmpty(referencedColumnName)) {
+                if (entity == null)
+                    entity = Streams.map(getClassMeta(declaringClass).getIds(), ID::getColumn);
+
+                if (entity.get(i) == null) {
+                    throw new IllegalStateException(
+                            "referencedColumnName not specified on field: " + field);
+                }
+            } else {
+                if (entity == null)
+                    entity = new ArrayList<>();
+                entity.set(i, referencedColumnName);
+            }
+
+            join.add(Strings.isNullOrEmpty(columnName)
+                    ? concatWithUnderscore(declaringTableName, entity.get(i))
+                    : columnName);
+        }
+        return entity;
     }
 
     private static Association getAssociation(Member field,
@@ -627,12 +676,44 @@ final class JPAHelpers {
         return getJoinTableName(field, name, catalog, schema, targetSupplier);
     }
 
+    public static String getECTableName(Member member) {
+
+        Member field = getAnnotatedField(member);
+        AnnotatedElement annotated = (AnnotatedElement) field;
+
+        String name = "", catalog = "", schema = "";
+
+        CollectionTable joinTable = annotated.getAnnotation(CollectionTable.class);
+
+        if (joinTable != null) {
+            name = joinTable.name();
+            catalog = joinTable.catalog();
+            schema = joinTable.schema();
+        }
+
+        Member f = field;
+        Supplier<Class<?>> targetSupplier = () -> getTargetForEC(f);
+        return getJoinTableName(field, name, catalog, schema, targetSupplier);
+    }
+
     private static Class<?> getTargetForMTM(Member field) {
 
         AnnotatedElement annotated = (AnnotatedElement) field;
         ManyToMany mtm = annotated.getAnnotation(ManyToMany.class);
 
         Class<?> target = mtm.targetEntity();
+        if (target == void.class)
+            target = getTargetByParameterizedType((Field) field);
+
+        return target;
+    }
+
+    private static Class<?> getTargetForEC(Member field) {
+
+        AnnotatedElement annotated = (AnnotatedElement) field;
+        ElementCollection mtm = annotated.getAnnotation(ElementCollection.class);
+
+        Class<?> target = mtm.targetClass();
         if (target == void.class)
             target = getTargetByParameterizedType((Field) field);
 

@@ -15,6 +15,7 @@ public interface UserRepository extends ElementCollectionTypes, JpaRepository<El
         EntityManagerSupplier, CommonTest {
 
     default int countPhones(User x) {
+        Long id = x.getId();
         FluentQuery query = FluentJPA.SQL((User user,
                                            ElementCollection<User, String> userPhones) -> {
 
@@ -23,14 +24,14 @@ public interface UserRepository extends ElementCollectionTypes, JpaRepository<El
             SELECT(COUNT());
             FROM(userPhones);
 
-            WHERE(userPhones.getOwner().getId() == x.getId());
+            WHERE(userPhones.getOwner().getId() == id);
 
         });
 
         // @formatter:off
-        String expected = "SELECT COUNT(t1.student_id) " + 
-                "FROM COURSE t0, course_like t1 " + 
-                "WHERE ((t1.course_id = t0.id) AND (t0.name = ?1))";
+        String expected = "SELECT COUNT(*) " + 
+                "FROM EC.user_phone_numbers t1 " + 
+                "WHERE (t1.user_id = ?1)";
         // @formatter:on
 
         assertQuery(query, expected);

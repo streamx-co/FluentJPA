@@ -8,6 +8,7 @@ import static co.streamx.fluent.SQL.Directives.discardSQL;
 import static co.streamx.fluent.SQL.Directives.injectSQL;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Directives.viewOf;
+import static co.streamx.fluent.SQL.Library.COUNT;
 import static co.streamx.fluent.SQL.Operators.EXISTS;
 import static co.streamx.fluent.SQL.PostgreSQL.SQL.registerVendorCapabilities;
 import static co.streamx.fluent.SQL.SQL.BY;
@@ -42,6 +43,7 @@ import javax.persistence.Table;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import co.streamx.fluent.JPA.ElementCollectionTypes.User;
 import co.streamx.fluent.JPA.repository.entities.Company;
 import co.streamx.fluent.JPA.repository.entities.Course;
 import co.streamx.fluent.JPA.repository.entities.Employee;
@@ -50,6 +52,7 @@ import co.streamx.fluent.JPA.repository.entities.NetworkObjectRange;
 import co.streamx.fluent.JPA.repository.entities.ObjectContainer;
 import co.streamx.fluent.JPA.repository.entities.Person;
 import co.streamx.fluent.JPA.repository.entities.Student;
+import co.streamx.fluent.SQL.ElementCollection;
 import co.streamx.fluent.SQL.JoinTable;
 import co.streamx.fluent.SQL.LockStrength;
 import co.streamx.fluent.SQL.Versioning;
@@ -377,5 +380,29 @@ public class TestJPA implements CommonTest {
             HAVING(COUNT(gemstoneId) == count);
         });
         return query;
+    }
+
+    @Test
+    public void EC1() throws Exception {
+
+        Long id = 1L;
+        FluentQuery query = FluentJPA.SQL((User user,
+                                           ElementCollection<User, String> userPhones) -> {
+
+            discardSQL(userPhones.join(user, User::getPhoneNumbers));
+
+            SELECT(COUNT());
+            FROM(userPhones);
+
+            WHERE(userPhones.getOwner().getId() == id);
+
+        });
+
+        // @formatter:off
+        String expected = "SELECT COUNT(*) " + 
+                "FROM EC.user_phone_numbers AS t1 " + 
+                "WHERE (t1.user_id = ?1)";
+        // @formatter:on
+        assertQuery(query, expected, new Object[] { id });
     }
 }
