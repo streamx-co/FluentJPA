@@ -193,7 +193,7 @@ interface IdentifierPath extends UnboundCharSequence {
 
         @Override
         public CharSequence resolve(IdentifierPath path) {
-            if (!(path instanceof Resolved))
+            if (!(path instanceof Resolved)) // TODO: can be MultiColumnIdentifierPath
                 throw new IllegalArgumentException(path.getClass() + ":" + path.current());
             String key = path.getFieldName();
             String override = overrides.get(key);

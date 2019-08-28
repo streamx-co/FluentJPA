@@ -744,26 +744,22 @@ final class DSLInterpreter
                     Property tableColProperty = m.getAnnotation(TableCollection.Property.class);
                     if (tableColProperty != null) {
                         CharSequence lseq = inst;
-                        if (tableColProperty.owner()) {
-                            return pp -> {
-                                Member member = collectionTablesForFROM.get(lseq);
-                                if (member == null)
-                                    throw TranslationError.ASSOCIATION_NOT_INITED.getError(m);
+                        Member member = collectionTablesForFROM.get(lseq);
+                        if (member == null)
+                            throw TranslationError.ASSOCIATION_NOT_INITED.getError(m);
 
-                                return new IdentifierPath.MultiColumnIdentifierPath(m.getName(),
-                                        clazz -> getAssociationElementCollection(member)).resolveInstance(lseq);
-                            };
+                        if (tableColProperty.owner()) {
+                            return pp -> new IdentifierPath.MultiColumnIdentifierPath(m.getName(),
+                                    c -> getAssociationElementCollection(member)).resolveInstance(lseq);
                         } else {
                             return pp -> {
-                                Member member = collectionTablesForFROM.get(lseq);
-                                if (member == null)
-                                    throw TranslationError.ASSOCIATION_NOT_INITED.getError(m);
 
                                 Class<?> target = getTargetForEC(member);
                                 if (!isEmbeddable(target))
-                                    return getColumnNameFromProperty(member);
-                                return new IdentifierPath.MultiColumnIdentifierPath(m.getName(),
-                                        clazz -> getAssociationElementCollection(member)).resolveInstance(lseq);
+                                    return new StringBuilder(lseq).append(DOT_CHAR)
+                                            .append(getColumnNameFromProperty(member));
+
+                                return calcOverrides(lseq, member);
                             };
                         }
                     }

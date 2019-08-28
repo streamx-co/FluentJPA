@@ -43,6 +43,7 @@ import javax.persistence.Table;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import co.streamx.fluent.JPA.ElementCollectionTypes.Address;
 import co.streamx.fluent.JPA.ElementCollectionTypes.User;
 import co.streamx.fluent.JPA.repository.entities.Company;
 import co.streamx.fluent.JPA.repository.entities.Course;
@@ -423,8 +424,32 @@ public class TestJPA implements CommonTest {
         });
 
         // @formatter:off
-        String expected = "SELECT phone_number " + 
+        String expected = "SELECT t1.phone_number " + 
                 "FROM EC.user_phone_numbers AS t1 " + 
+                "WHERE (t1.user_id = ?1)";
+        // @formatter:on
+        assertQuery(query, expected, new Object[] { id });
+    }
+
+    @Test
+    public void EC3() throws Exception {
+
+        Long id = 1L;
+        FluentQuery query = FluentJPA.SQL((User user,
+                                           ElementCollection<User, Address> userAddresses) -> {
+
+            discardSQL(userAddresses.join(user, User::getAddresses));
+
+            SELECT(userAddresses.getElement().getAddressLine1());
+            FROM(userAddresses);
+
+            WHERE(userAddresses.getOwner().getId() == id);
+
+        });
+
+        // @formatter:off
+        String expected = "SELECT t1.house_number " + 
+                "FROM EC.user_addresses AS t1 " + 
                 "WHERE (t1.user_id = ?1)";
         // @formatter:on
         assertQuery(query, expected, new Object[] { id });
