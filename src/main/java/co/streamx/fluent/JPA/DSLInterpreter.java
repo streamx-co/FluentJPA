@@ -756,8 +756,7 @@ final class DSLInterpreter
 
                                 Class<?> target = getTargetForEC(member);
                                 if (!isEmbeddable(target))
-                                    return new StringBuilder(lseq).append(DOT_CHAR)
-                                            .append(getColumnNameFromProperty(member));
+                                    return getColumnNameFromProperty(member).resolveInstance(lseq);
 
                                 return calcOverrides(lseq, member);
                             };

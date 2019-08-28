@@ -454,4 +454,24 @@ public class TestJPA implements CommonTest {
         // @formatter:on
         assertQuery(query, expected, new Object[] { id });
     }
+
+    @Test
+    public void EC4() throws Exception {
+
+        FluentQuery query = FluentJPA.SQL((User user,
+                                           ElementCollection<User, Address> userAddresses) -> {
+
+            discardSQL(userAddresses.join(user, User::getAddresses));
+
+            INSERT().INTO(viewOf(userAddresses, jt -> jt.getOwner().getId(), jt -> jt.getElement().getAddressLine2()));
+            VALUES(row(1, "2"));
+
+        });
+
+        // @formatter:off
+        String expected = "INSERT   INTO  EC.user_addresses AS t1 (user_id, street)  " + 
+                          "VALUES (1, '2')";
+        // @formatter:on
+        assertQuery(query, expected);
+    }
 }
