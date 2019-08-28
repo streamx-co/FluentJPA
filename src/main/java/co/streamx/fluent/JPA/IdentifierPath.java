@@ -10,20 +10,21 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 interface IdentifierPath extends UnboundCharSequence {
-    CharSequence resolveInstance(CharSequence inst);
+    default CharSequence resolveInstance(CharSequence inst) {
+        return resolveInstance(inst, false);
+    }
 
-    CharSequence resolve(IdentifierPath path);
+    CharSequence resolveInstance(CharSequence inst,
+                                 boolean withoutInstance);
+
+    default CharSequence resolve(IdentifierPath path) {
+        return resolve(path, false);
+    }
+
+    CharSequence resolve(IdentifierPath path,
+                         boolean withoutInstance);
 
     CharSequence current();
-
-    default CharSequence resolveOverrides(CharSequence path) {
-        CharSequence x = (path instanceof IdentifierPath) ? ((IdentifierPath) path).getOverride(getFieldName()) : null;
-        return x != null ? x : current();
-    }
-
-    default CharSequence getOverride(CharSequence path) {
-        return null;
-    }
 
     Class<?> getDeclaringClass();
 
@@ -71,20 +72,22 @@ interface IdentifierPath extends UnboundCharSequence {
         }
 
         @Override
-        public CharSequence resolveInstance(CharSequence inst) {
+        public CharSequence resolveInstance(CharSequence inst,
+                                            boolean withoutInstance) {
             if (inst instanceof ParameterRef)
                 throw TranslationError.CANNOT_DEREFERENCE_PARAMETERS.getError(((ParameterRef) inst).getValue(),
                         resolution);
             if (Strings.isNullOrEmpty(inst))
                 return this;
             if (inst instanceof IdentifierPath)
-                return ((IdentifierPath) inst).resolve(this);
-            return new Resolved(new StringBuilder(inst).append(DOT).append(resolution).toString(), declaringClass,
-                    fieldName);
+                return ((IdentifierPath) inst).resolve(this, withoutInstance);
+            StringBuilder seq = withoutInstance ? new StringBuilder() : new StringBuilder(inst).append(DOT);
+            return new Resolved(seq.append(resolution).toString(), declaringClass, fieldName);
         }
 
         @Override
-        public CharSequence resolve(IdentifierPath path) {
+        public CharSequence resolve(IdentifierPath path,
+                                    boolean withoutInstance) {
             return this;
         }
 
@@ -143,7 +146,8 @@ interface IdentifierPath extends UnboundCharSequence {
         }
 
         @Override
-        public CharSequence resolveInstance(CharSequence inst) {
+        public CharSequence resolveInstance(CharSequence inst,
+                                            boolean withoutInstance) {
             if (this.instance != null)
                 new IllegalStateException("Already initialized with '" + this.instance + "' instance. Passing a new '"
                         + inst + "' is illegal");
@@ -163,7 +167,8 @@ interface IdentifierPath extends UnboundCharSequence {
         }
 
         @Override
-        public CharSequence resolve(IdentifierPath path) {
+        public CharSequence resolve(IdentifierPath path,
+                                    boolean withoutInstance) {
             if (!(path instanceof Resolved))
                 throw new IllegalArgumentException(path.getClass() + ":" + path.current());
             CharSequence key = path.current();
@@ -172,9 +177,10 @@ interface IdentifierPath extends UnboundCharSequence {
             for (int i = 0; i < referenced.size(); i++) {
                 CharSequence seq = referenced.get(i);
                 if (Strings.equals(seq, key)) {
-                    return new Resolved(
-                            new StringBuilder(getInstance()).append(DOT).append(association.getLeft().get(i)),
-                            path.getDeclaringClass(), path.getFieldName());
+                    StringBuilder inst = withoutInstance ? new StringBuilder()
+                            : new StringBuilder(getInstance()).append(DOT);
+                    return new Resolved(inst.append(association.getLeft().get(i)), path.getDeclaringClass(),
+                            path.getFieldName());
                 }
             }
             throw new IllegalArgumentException("Column '" + key + "' not found in PK: " + referenced);
@@ -185,27 +191,43 @@ interface IdentifierPath extends UnboundCharSequence {
 
         private final Map<String, String> overrides;
 
-        public ColumnOverridingIdentifierPath(String originalField,
-                Map<String, String> overrides) {
-            super(originalField);
+        public ColumnOverridingIdentifierPath(Map<String, String> overrides) {
+            super(null);
             this.overrides = overrides;
         }
 
         @Override
-        public CharSequence resolve(IdentifierPath path) {
+        public int length() {
+            return current().length();
+        }
+
+        @Override
+        public char charAt(int index) {
+            return current().charAt(index);
+        }
+
+        @Override
+        public CharSequence subSequence(int start,
+                                        int end) {
+            return current().subSequence(start, end);
+        }
+
+        @Override
+        public String toString() {
+            return current().toString();
+        }
+
+        @Override
+        public CharSequence resolve(IdentifierPath path,
+                                    boolean withoutInstance) {
             if (!(path instanceof Resolved)) // TODO: can be MultiColumnIdentifierPath
                 throw new IllegalArgumentException(path.getClass() + ":" + path.current());
             String key = path.getFieldName();
             String override = overrides.get(key);
             CharSequence column = override != null ? override : path.current();
 
-            return new Resolved(new StringBuilder(getInstance()).append(DOT).append(column), path.getDeclaringClass(),
-                    key);
-        }
-
-        @Override
-        public CharSequence getOverride(CharSequence path) {
-            return overrides.get(path.toString());
+            StringBuilder inst = withoutInstance ? new StringBuilder() : new StringBuilder(getInstance()).append(DOT);
+            return new Resolved(inst.append(column), path.getDeclaringClass(), key);
         }
     }
 }

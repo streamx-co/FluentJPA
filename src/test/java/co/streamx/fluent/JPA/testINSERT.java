@@ -14,6 +14,7 @@ import static co.streamx.fluent.SQL.SQL.WHERE;
 import static co.streamx.fluent.SQL.SQL.row;
 import static co.streamx.fluent.SQL.ScalarFunctions.WHEN;
 
+import javax.persistence.AttributeOverride;
 import javax.persistence.Column;
 import javax.persistence.Table;
 
@@ -168,6 +169,7 @@ public class testINSERT implements CommonTest {
 
     @Tuple("employees")
     @Data
+    @AttributeOverride(name = "commissionPct", column = @Column(name = "commission_pct1"))
     public static class Employee {
         private int employeeId;
         private int salary;
@@ -214,7 +216,7 @@ public class testINSERT implements CommonTest {
         });
 
         String expected = "INSERT   INTO raises t0 " + "SELECT t1.employee_id, (t1.salary * ?1) " + "FROM employees t1 "
-                + "WHERE (t1.commission_pct > ?2) " + "LOG ERRORS   INTO errlog  ('my_bad')" + "REJECT LIMIT 10";
+                + "WHERE (t1.commission_pct1 > ?2) " + "LOG ERRORS   INTO errlog  ('my_bad')" + "REJECT LIMIT 10";
 
         Object[] args = { raise, commissionPct };
         assertQuery(query, expected, args);

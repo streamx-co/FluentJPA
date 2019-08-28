@@ -935,12 +935,12 @@ final class DSLInterpreter
 
                     if (isEmbeddable(m.getReturnType()) || isCollection(m.getReturnType()) || isEmbedded(m))
                         // embedded
-                        return calcOverrides(out, m);
+                        return calcOverrides(out, (Member) m);
 
                     IdentifierPath columnName = getColumnNameFromProperty(m);
 
                     if (m.getParameterCount() > 0) // assignment
-                        return new StringBuilder(columnName.resolveOverrides(instFinal))
+                        return new StringBuilder(columnName.resolveInstance(instFinal, true))
                                 .append(KEYWORD_DELIMITER + EQUAL_SIGN + KEYWORD_DELIMITER)
                                 .append(pp.get(0));
 
@@ -1149,7 +1149,8 @@ final class DSLInterpreter
                     Class<?> resultType = e.getResultType();
                     if (!isEntityLike(resultType))
                         throw TranslationError.CANNOT_CALCULATE_TABLE_REFERENCE.getError(resultType);
-                    StringBuilder tableRef = new StringBuilder(TABLE_ALIAS_PREFIX).append(parameterCounter++);
+                    CharSequence tableRef = calcOverrides(
+                            new StringBuilder(TABLE_ALIAS_PREFIX).append(parameterCounter++), resultType);
                     tableRefs.add(tableRef);
                     return registerJoinTable(tableRef, e);
                 }

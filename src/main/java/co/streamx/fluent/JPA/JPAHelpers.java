@@ -182,11 +182,16 @@ final class JPAHelpers {
         field = getAnnotatedField(field);
         AnnotatedElement annotated = (AnnotatedElement) field;
 
+        return calcOverrides(instance, annotated);
+    }
+
+    public static CharSequence calcOverrides(CharSequence instance,
+                                             AnnotatedElement annotated) {
         Map<String, String> overrides = calcOverrides(annotated);
         if (overrides.isEmpty())
             return instance;
 
-        return new IdentifierPath.ColumnOverridingIdentifierPath(field.getName(), overrides).resolveInstance(instance);
+        return new IdentifierPath.ColumnOverridingIdentifierPath(overrides).resolveInstance(instance);
     }
 
     // TODO: overrides for MappedClass objects
