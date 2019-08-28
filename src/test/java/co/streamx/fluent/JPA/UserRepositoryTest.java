@@ -2,12 +2,14 @@ package co.streamx.fluent.JPA;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,11 @@ public class UserRepositoryTest extends IntegrationTest implements ElementCollec
 
     @PersistenceContext
     private EntityManager em;
+
+    @BeforeAll
+    public static void init() {
+        FluentJPA.setCapabilities(Collections.emptySet());
+    }
 
     @Test
     @Transactional()
