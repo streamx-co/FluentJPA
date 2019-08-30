@@ -1,4 +1,4 @@
-# FluentJPA <div style="float:right">![Patent Pending](https://img.shields.io/badge/patent-pending-informational) ![License](https://img.shields.io/github/license/streamx-co/fluent-jpa) ![Java Version](https://img.shields.io/badge/java-%3E%3D%208-success) [![Build Status](https://travis-ci.org/streamx-co/FluentJPA.svg?branch=master)](https://travis-ci.org/streamx-co/FluentJPA) [![Maven Central](https://img.shields.io/maven-central/v/co.streamx.fluent/fluent-jpa?label=maven%20central)](https://search.maven.org/search?q=g:%22co.streamx.fluent%22%20AND%20a:%22fluent-jpa%22)</div>
+# FluentJPA <div style="float:right">![Patent Pending](https://img.shields.io/badge/patent-pending-informational) [![License](https://img.shields.io/badge/license-AGPL_3.0/Commercial-informational)](https://fluentjpa.com) ![Java Version](https://img.shields.io/badge/java-%3E%3D%208-success) [![Build Status](https://travis-ci.org/streamx-co/FluentJPA.svg?branch=master)](https://travis-ci.org/streamx-co/FluentJPA) [![Maven Central](https://img.shields.io/maven-central/v/co.streamx.fluent/fluent-jpa?label=maven%20central)](https://search.maven.org/search?q=g:%22co.streamx.fluent%22%20AND%20a:%22fluent-jpa%22)</div>
 
 ### Fluent API for writing type-safe SQL queries in Java ([full documentation](https://github.com/streamx-co/FluentJPA/wiki))
 
@@ -17,7 +17,11 @@ How is FluentJPA different (better) than its competitors, jOOQ in particular? Th
 
 ## Setup
 
-There is no bootstrap, code generation step or anything else needed to use FluentJPA. Add [dependencies](https://github.com/streamx-co/FluentJPA/wiki/Setup) to your project build system and unlock the full power of type-safe Object Oriented SQL in your JPA project without compromises! (Disclaimer: FluentJPA strives to be as unobtrusive as possible. We don't change or affect anything, so your existing code will continue to work as before. We don't bring **any** dependencies except our own code and [ASM](https://asm.ow2.io/), total ~500K).
+There is no bootstrap, code generation step or anything else needed to use FluentJPA. Add [dependencies](https://github.com/streamx-co/FluentJPA/wiki/Setup) to your project enjoy the type-safe Object Oriented SQL in your JPA project without compromises! (Disclaimer: FluentJPA strives to be as unobtrusive as possible. We don't change or affect anything, so your existing code will continue to work as before. We don't bring **any** dependencies except our own code and [ASM](https://asm.ow2.io/), total ~500K).
+
+## Licensing
+
+FluentJPA is licensed under [dual license](https://github.com/streamx-co/FluentJPA/wiki/License-Model), [AGPL](http://www.gnu.org/licenses/agpl.html) for GPL compatible projects and [commercial license](https://fluentjpa.com/) for the others.
 
 ## Examples
 
