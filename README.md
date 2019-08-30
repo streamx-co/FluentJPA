@@ -1,6 +1,6 @@
 # FluentJPA <div style="float:right">![Patent Pending](https://img.shields.io/badge/patent-pending-informational) [![License](https://img.shields.io/badge/license-AGPL_3.0/Commercial-informational)](https://fluentjpa.com) ![Java Version](https://img.shields.io/badge/java-%3E%3D%208-success) [![Build Status](https://travis-ci.org/streamx-co/FluentJPA.svg?branch=master)](https://travis-ci.org/streamx-co/FluentJPA) [![Maven Central](https://img.shields.io/maven-central/v/co.streamx.fluent/fluent-jpa?label=maven%20central)](https://search.maven.org/search?q=g:%22co.streamx.fluent%22%20AND%20a:%22fluent-jpa%22)</div>
 
-### Fluent API for writing type-safe SQL queries in Java ([full documentation](https://github.com/streamx-co/FluentJPA/wiki))
+### Fluent API for writing type-safe SQL queries in Java ([full documentation](https://github.com/streamx-co/FluentJPA/wiki), [commercial usage](https://fluentjpa.com))
 
 JPA is a great technology that maps the database relational model to the Java object oriented model. It lets retrieve data and persist back the changes very easily. But it lacks the ability to perform advanced queries. In fact, all the advanced SQL capabilities are simply locked to the Java developer until she chooses to write a hard-to-maintain SQL as a hard-coded string.
 
