@@ -19,11 +19,7 @@ How is FluentJPA different (better) than its competitors, jOOQ in particular? Th
 
 There is no bootstrap, code generation step or anything else needed to use FluentJPA. Add [dependencies](https://github.com/streamx-co/FluentJPA/wiki/Setup) to your project enjoy the type-safe Object Oriented SQL in your JPA project without compromises! (Disclaimer: FluentJPA strives to be as unobtrusive as possible. We don't change or affect anything, so your existing code will continue to work as before. We don't bring **any** dependencies except our own code and [ASM](https://asm.ow2.io/), total ~500K).
 
-## Licensing
-
-FluentJPA is licensed under [dual license](https://github.com/streamx-co/FluentJPA/wiki/License-Model), [AGPL](http://www.gnu.org/licenses/agpl.html) for GPL compatible projects and [commercial license](https://fluentjpa.com/) for the others.
-
-## Examples
+## Usage Examples
 
 <!-- > Probably the most important feature missing in JPA is **Sub Query**. Joins are kind of "solved" by JPA annotations combined with JPA loading policies. With JPA Repositories [Query Creation](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#repositories.query-methods.query-creation) it's possible to easily create most of single queries required in practice. But there is absolutely no good solution when a sub query is needed! Not only FluentJPA supports sub queries very well, it also lets put them into a separate Java function, for brevity. After all, sub query is sort of a lambda inside an SQL query, I think. -->
 > Probably the most important feature missing in JPA is **Sub Query**. We think that any serious SQL starts with them (just look [here](https://mode.com/sql-tutorial/sql-subqueries/) for few examples). Not only FluentJPA supports sub queries, it also lets put them into a separate Java(!) function. So the code looks 100% natural to a Java developer.
@@ -234,3 +230,7 @@ private Function1<CoverageMaster, Boolean> buildOr1(List<String> likes) {
 ```
 
 > [Full documentation](https://github.com/streamx-co/FluentJPA/wiki)
+
+## Licensing
+
+FluentJPA is licensed under [dual license](https://github.com/streamx-co/FluentJPA/wiki/License-Model) model. [AGPL](http://www.gnu.org/licenses/agpl-3.0.html) for free software projects and [commercial license](https://fluentjpa.com/) for the others.
