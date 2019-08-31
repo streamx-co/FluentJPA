@@ -340,7 +340,7 @@ final class JPAHelpers {
             else if (inverse) {
                 declaringClass = manyToMany.targetEntity();
                 if (declaringClass == void.class)
-                    declaringClass = getTargetByParameterizedType((Field) field);
+                    declaringClass = getTargetByParameterizedType(field);
             }
 
             List<CharSequence> entity = null;
@@ -392,7 +392,7 @@ final class JPAHelpers {
             } else {
                 if (entity == null)
                     entity = new ArrayList<>();
-                entity.set(i, referencedColumnName);
+                entity.add(referencedColumnName);
             }
 
             join.add(Strings.isNullOrEmpty(columnName)
@@ -721,7 +721,7 @@ final class JPAHelpers {
 
         Class<?> target = mtm.targetEntity();
         if (target == void.class)
-            target = getTargetByParameterizedType((Field) field);
+            target = getTargetByParameterizedType(field);
 
         return target;
     }
@@ -737,7 +737,7 @@ final class JPAHelpers {
 
         Class<?> target = mtm.targetClass();
         if (target == void.class)
-            target = getTargetByParameterizedType((Field) field);
+            target = getTargetByParameterizedType(field);
 
         return target;
     }
@@ -755,8 +755,9 @@ final class JPAHelpers {
         return buildFullTableName(catalog, schema, name);
     }
 
-    private static Class<?> getTargetByParameterizedType(Field field) {
-        ParameterizedType genericType = (ParameterizedType) field.getGenericType();
+    private static Class<?> getTargetByParameterizedType(Member member) {
+        ParameterizedType genericType = (ParameterizedType) (member instanceof Field ? ((Field) member).getGenericType()
+                : ((Method) member).getGenericReturnType());
         Type[] types = genericType.getActualTypeArguments();
         return (Class<?>) types[0];
     }

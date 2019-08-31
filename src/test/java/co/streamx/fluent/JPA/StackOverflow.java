@@ -49,6 +49,7 @@ import javax.persistence.Table;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import co.streamx.fluent.SQL.JoinTable;
 import co.streamx.fluent.SQL.Oracle.Format;
 import co.streamx.fluent.SQL.Oracle.FormatModel;
 import co.streamx.fluent.functions.Function1;
@@ -58,7 +59,7 @@ import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
 import lombok.Getter;
 
-public class StackOverflow implements CommonTest {
+public class StackOverflow implements CommonTest, StackOverflowTypes {
 
     @BeforeAll
     public static void init() {
@@ -185,16 +186,16 @@ public class StackOverflow implements CommonTest {
     @Local
     public static Keyword declareNumberToBoolean() {
         // @formatter:off
-        return injectSQL("FUNCTION number_to_boolean_(i NUMBER)\r\n" + 
-                "  RETURN NUMBER\r\n" + 
-                "  IS\r\n" + 
-                "    b BOOLEAN;\r\n" + 
-                "  BEGIN\r\n" + 
-                "    -- Actual function call\r\n" + 
-                "    b := number_to_boolean(i);\r\n" + 
-                "     \r\n" + 
-                "    -- Translation to numeric result\r\n" + 
-                "    RETURN CASE b WHEN TRUE THEN 1 WHEN FALSE THEN 0 END;\r\n" + 
+        return injectSQL("FUNCTION number_to_boolean_(i NUMBER)" + 
+                "  RETURN NUMBER" + 
+                "  IS" + 
+                "    b BOOLEAN;" + 
+                "  BEGIN" + 
+                "    -- Actual function call" + 
+                "    b := number_to_boolean(i);" + 
+                "     " + 
+                "    -- Translation to numeric result" + 
+                "    RETURN CASE b WHEN TRUE THEN 1 WHEN FALSE THEN 0 END;" + 
                 "  END number_to_boolean_;");
         // @formatter:on
     }
@@ -350,8 +351,6 @@ public class StackOverflow implements CommonTest {
         private int balance;
     }
 
-
-
     @Test
     // https://stackoverflow.com/questions/57429484/common-functions-for-oracle-and-mysql
     public void commonFunction() {
@@ -380,6 +379,7 @@ public class StackOverflow implements CommonTest {
     }
 
     public static final FormatModel DD_MM_YY = Format.dateModel(Format.DD, Format.MM, Format.YY);
+
     public static boolean isOracle() {
         return false;
     }
@@ -509,5 +509,32 @@ public class StackOverflow implements CommonTest {
             GROUP(BY(p.getId()));
         });
         return query;// .createQuery(em, ProfileMenuGroup.class).getSingleResult();
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/57736227/conditional-join-fetch-in-hibernate
+    public void TestMethodAccess() {
+
+        FluentQuery query = FluentJPA.SQL((SecurityUserRealmRoleEntity roleRealm,
+                                           SecurityRoleEntity role,
+                                           JoinTable<SecurityRoleEntity, SecurityPermissionEntity> rolesToPermissions,
+                                           SecurityPermissionEntity permission) -> {
+            SELECT(roleRealm, permission.getId());
+            FROM(roleRealm).JOIN(role)
+                    .ON(roleRealm.getRole() == role)
+                    .JOIN(rolesToPermissions)
+                    .ON(rolesToPermissions.join(role, SecurityRoleEntity::getPermissions))
+                    .JOIN(permission)
+                    .ON(rolesToPermissions.inverseJoin(permission, SecurityRoleEntity::getPermissions));
+
+            WHERE(role.isEnabled() && !role.isDeleted());
+        });
+
+        // @formatter:off
+        String expected = "SELECT t0.*, t3.ID_PK "
+                + "FROM BARBANETUSER.SECURITY_USER_REALM_ROLE t0  INNER JOIN BARBANETUSER.SECURITY_ROLE t1  ON (t0.ROLE_ID_FK = t1.ID_PK)  INNER JOIN BARBANETUSER.SECURITY_ROLE_PERMISSION t2  ON (t2.ROLE_ID_FK = t1.ID_PK)  INNER JOIN BARBANETUSER.SECURITY_PERMISSION t3  ON (t2.PERMISSION_ID_FK = t3.ID_PK) "
+                + "WHERE (t1.ENABLED AND NOT(t1.DELETED))";
+        // @formatter:on
+        assertQuery(query, expected);
     }
 }
