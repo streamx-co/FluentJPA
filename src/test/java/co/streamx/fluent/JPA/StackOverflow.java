@@ -1,5 +1,6 @@
 package co.streamx.fluent.JPA;
 
+import static co.streamx.fluent.SQL.AggregateFunctions.COUNT;
 import static co.streamx.fluent.SQL.AggregateFunctions.ROW_NUMBER;
 import static co.streamx.fluent.SQL.AggregateFunctions.SUM;
 import static co.streamx.fluent.SQL.Directives.aggregateBy;
@@ -10,6 +11,7 @@ import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Library.pick;
 import static co.streamx.fluent.SQL.Library.selectAll;
 import static co.streamx.fluent.SQL.MySQL.SQL.GROUP_CONCAT;
+import static co.streamx.fluent.SQL.MySQL.SQL.LIMIT;
 import static co.streamx.fluent.SQL.MySQL.SQL.STR_TO_DATE;
 import static co.streamx.fluent.SQL.Operators.BETWEEN;
 import static co.streamx.fluent.SQL.Operators.lessEqual;
@@ -19,6 +21,7 @@ import static co.streamx.fluent.SQL.SQL.BY;
 import static co.streamx.fluent.SQL.SQL.DISTINCT;
 import static co.streamx.fluent.SQL.SQL.FROM;
 import static co.streamx.fluent.SQL.SQL.GROUP;
+import static co.streamx.fluent.SQL.SQL.ORDER;
 import static co.streamx.fluent.SQL.SQL.PARTITION;
 import static co.streamx.fluent.SQL.SQL.SELECT;
 import static co.streamx.fluent.SQL.SQL.UPDATE;
@@ -534,6 +537,36 @@ public class StackOverflow implements CommonTest, StackOverflowTypes {
         String expected = "SELECT t0.*, t3.ID_PK "
                 + "FROM BARBANETUSER.SECURITY_USER_REALM_ROLE t0  INNER JOIN BARBANETUSER.SECURITY_ROLE t1  ON (t0.ROLE_ID_FK = t1.ID_PK)  INNER JOIN BARBANETUSER.SECURITY_ROLE_PERMISSION t2  ON (t2.ROLE_ID_FK = t1.ID_PK)  INNER JOIN BARBANETUSER.SECURITY_PERMISSION t3  ON (t2.PERMISSION_ID_FK = t3.ID_PK) "
                 + "WHERE (t1.ENABLED AND NOT(t1.DELETED))";
+        // @formatter:on
+        assertQuery(query, expected);
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/57701600/how-to-select-multiple-columns-in-subqueryhql
+    public void TestSubQueryJoin() {
+
+        FluentQuery query = FluentJPA.SQL((User u) -> {
+
+            UserIdCount sub = subQuery((UserLog log) -> {
+                int count = alias(COUNT(log.getUserId()), UserIdCount::getCount);
+                SELECT(log.getUserId(), count);
+                FROM(log);
+                ORDER(BY(count).DESC());
+                LIMIT(5);
+            });
+
+            SELECT(u.getName(), sub.getCount());
+            FROM(u).JOIN(sub).ON(u.getId() == sub.getUserId());
+        });
+
+//        query.createQuery(em, UserNameCount.class).getSingleResult();
+
+        // @formatter:off
+        String expected = "SELECT t0.name, q0.count " + 
+                "FROM USER t0  INNER JOIN (SELECT t1.user_id, COUNT(t1.user_id) AS count " + 
+                "FROM USER_LOG t1 " + 
+                "ORDER BY  COUNT(t1.user_id)  DESC   " + 
+                "LIMIT 5 ) q0  ON (t0.id = q0.user_id)";
         // @formatter:on
         assertQuery(query, expected);
     }

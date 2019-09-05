@@ -17,6 +17,8 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
 import co.streamx.fluent.notation.Tuple;
+import lombok.Data;
+import lombok.Getter;
 
 public interface StackOverflowTypes {
 
@@ -226,5 +228,34 @@ public interface StackOverflowTypes {
         public void setRole(SecurityRoleEntity role) {
             this.role = role;
         }
+    }
+
+    @Tuple
+    @Getter
+    @Table(name = "USER")
+    class User {
+        private Long id;
+        private String name;
+    }
+
+    @Tuple
+    @Getter
+    @Table(name = "USER_LOG")
+    class UserLog {
+        private Long userId;
+    }
+
+    @Tuple
+    @Getter
+    class UserIdCount {
+        private Long userId;
+        private int count;
+    }
+
+    @Tuple
+    @Data
+    class UserNameCount {
+        private int count;
+        private String name;
     }
 }
