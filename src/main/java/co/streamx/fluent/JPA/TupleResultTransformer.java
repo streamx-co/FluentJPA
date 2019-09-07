@@ -1,52 +1,103 @@
 package co.streamx.fluent.JPA;
 
-import java.lang.reflect.Method;
+import java.lang.reflect.AnnotatedElement;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
+import javax.persistence.MapsId;
+import javax.persistence.Transient;
+
+import co.streamx.fluent.JPA.JPAHelpers.Association;
+import co.streamx.fluent.JPA.JPAHelpers.ClassMeta;
+import co.streamx.fluent.JPA.JPAHelpers.ID;
 import co.streamx.fluent.JPA.vendor.TupleResultTransformer;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 
 @RequiredArgsConstructor
-class TupleResultTransformerImpl<T> implements TupleResultTransformer<T> {
+class TupleResultTransformerImpl<T> implements TupleResultTransformer<T>, TupleResultTransformerImplHelpers {
 
     @RequiredArgsConstructor
-    @Getter
-    private static class SetterInfo {
-        private final Method setter;
-        private final Class<?> type;
+    @lombok.Getter
+    private static class PropertyInfo {
+        private final Setter setter;
+        private final String column;
     }
 
-    private static final Map<Class<?>, Map<String, SetterInfo>> transformMetaDataCache = new ConcurrentHashMap<>();
+    private static final Map<Class<?>, Map<String, PropertyInfo>> transformMetaDataCache = new ConcurrentHashMap<>();
 
     private final Class<T> targetType;
-    private final Map<String, SetterInfo> aliasesToMethods;
+    private final Map<String, PropertyInfo> aliasesToMethods;
 
     public TupleResultTransformerImpl(Class<T> targetType) {
         this.targetType = targetType;
 
         this.aliasesToMethods = transformMetaDataCache.computeIfAbsent(targetType, type -> {
-            return Arrays.stream(type.getMethods()).filter(m -> {
 
-                if (m.getDeclaringClass() == Object.class)
-                    return false;
+            return getProperties(type, null).collect(Collectors.toMap(PropertyInfo::getColumn, Function.identity()));
+        });
 
-                if (m.getParameterCount() > 0)
-                    return false;
+    }
 
-                String name = m.getName();
-                return name.startsWith("is") || name.startsWith("get");
-            })
-                    .collect(Collectors.toMap(m -> JPAHelpers.getColumnNameFromProperty(m).current().toString(),
-                            m -> new SetterInfo(setterFromGetter(m), m.getReturnType())));
+    private Stream<PropertyInfo> getProperties(Class<?> type,
+                                               Setter baseSetter) {
+        return Stream.of(type.getMethods()).filter(m -> {
+
+            if (m.getDeclaringClass() == Object.class)
+                return false;
+
+            if (m.getParameterCount() > 0)
+                return false;
+
+            if (m.getReturnType().isAssignableFrom(Collection.class))
+                return false;
+
+            String name = m.getName();
+            return name.startsWith("is") || name.startsWith("get");
+        }).map(JPAHelpers::getAnnotatedField).filter(m -> {
+            AnnotatedElement ae = (AnnotatedElement) m;
+            if (ae.isAnnotationPresent(Transient.class))
+                return false;
+
+            return !ae.isAnnotationPresent(MapsId.class);
+        }).flatMap(m -> {
+
+            Setter setter = TupleResultTransformerImplHelpers.getSetter(m, baseSetter);
+
+            Class<?> propertyType = setter.getType();
+            if (JPAHelpers.isEntityLike(propertyType)) {
+
+                Association assoc = JPAHelpers.getAssociation(m);
+                ClassMeta propMeta = JPAHelpers.getClassMeta(propertyType);
+
+                return IntStream.range(0, assoc.getCardinality()).mapToObj(i -> {
+                    String column = assoc.getLeft().get(i).toString().toUpperCase(Locale.ROOT);
+                    CharSequence other = assoc.getRight().get(i);
+
+                    ID foundId = Streams.find(propMeta.getIds(), id -> Strings.equals(other, id.getColumn()));
+
+                    Setter nestedSetter = TupleResultTransformerImplHelpers.getSetter(foundId.getMember(), setter);
+
+                    return new PropertyInfo(nestedSetter, column);
+                });
+            }
+
+            if (JPAHelpers.isEmbedded(m)) {
+                return getProperties(propertyType, setter);
+            }
+
+            PropertyInfo propertyInfo = new PropertyInfo(setter,
+                    JPAHelpers.getColumnNameFromProperty(m).current().toString().toUpperCase(Locale.ROOT));
+            return Stream.of(propertyInfo);
         });
     }
 
@@ -73,10 +124,10 @@ class TupleResultTransformerImpl<T> implements TupleResultTransformer<T> {
             if (Strings.isNullOrEmpty(alias))
                 throw new IllegalArgumentException("No alias for column " + i);
 
-            SetterInfo info = aliasesToMethods.get(alias.toLowerCase(Locale.ROOT));
+            PropertyInfo info = aliasesToMethods.get(alias.toUpperCase(Locale.ROOT));
             if (info == null)
                 throw new IndexOutOfBoundsException("Alias '" + alias + "' for column " + i + " not found");
-            info.getSetter().invoke(x, defaultConvert(value, info.getType()));
+            info.getSetter().set(x, defaultConvert(value, info.getSetter().getType()));
         }
 
         return x;
@@ -123,21 +174,5 @@ class TupleResultTransformerImpl<T> implements TupleResultTransformer<T> {
             }
         }
         return value;
-    }
-
-    @SneakyThrows
-    private static Method setterFromGetter(Method getter) {
-        Class<?> type = getter.getDeclaringClass();
-        String setterName;
-        String name = getter.getName();
-        if (name.charAt(0) == 'g') {
-            StringBuilder b = new StringBuilder(name);
-            b.setCharAt(0, 's');
-            setterName = b.toString();
-        } else {
-            setterName = new StringBuilder("set").append(name.substring(4)).toString();
-        }
-
-        return type.getMethod(setterName, getter.getReturnType());
     }
 }

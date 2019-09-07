@@ -1,10 +1,14 @@
 package co.streamx.fluent.JPA;
 
+import java.sql.Timestamp;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 import javax.persistence.Basic;
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
+import javax.persistence.Embeddable;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -13,11 +17,15 @@ import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
+import javax.persistence.MappedSuperclass;
+import javax.persistence.OneToMany;
+import javax.persistence.OrderBy;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
 public interface StackOverflowTypes {
@@ -257,5 +265,105 @@ public interface StackOverflowTypes {
     class UserNameCount {
         private int count;
         private String name;
+    }
+
+    @Tuple
+    @Data
+    class Movie {
+        @Id
+        String id;
+
+        @ManyToMany
+        @JoinTable(name = "movie_category", joinColumns = @JoinColumn(name = "movie_id", referencedColumnName = "id"))
+        Set<Category> categories = new HashSet<>();
+    }
+
+    @Tuple
+    @Data
+    @Table(name = "CATEGORIES")
+    class Category {
+
+        @Id
+        String id;
+
+    }
+
+    @Tuple
+    @Data
+    @Table(name = "STUDENTS")
+    class Student {
+
+        @Id
+        String id;
+
+        String name;
+
+    }
+
+    @Tuple
+    @Data
+    @Table(name = "SUBJECTS")
+    class Subject {
+
+        @Id
+        String id;
+
+        @ManyToOne(fetch = FetchType.LAZY)
+        @JoinColumn(name = "student_id")
+        Student student;
+
+        String title;
+
+        int marks;
+
+    }
+
+    @Tuple
+    @Table(name = "tbl_error_type")
+    @Data
+    class ErrorType {
+
+        @Id
+        private int id;
+
+        @OrderBy(value = "createAt DESC")
+        @OneToMany(mappedBy = "errorType", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+//        @Cache(usage = CacheConcurrencyStrategy.NONSTRICT_READ_WRITE)    
+        private Set<ErrorRecord> errors = new LinkedHashSet<>();
+
+        @ManyToOne
+        @JoinColumn(name = "device_id")
+        private Device device;
+    }
+
+    @Tuple
+    @Table(name = "tbl_error_record")
+    @Data
+    @EqualsAndHashCode(callSuper = true)
+    class ErrorRecord extends ErrorContent {
+
+        @Id
+        private int id;
+
+        @ManyToOne
+        @JoinColumn(name = "error_type_id")
+        private ErrorType errorType;
+
+        private Timestamp createdAt;
+    }
+
+    @Embeddable
+    @MappedSuperclass
+    @Data
+    class ErrorContent {
+        private String errorDescription;
+    }
+
+    @Tuple
+    @Table(name = "tbl_device")
+    @Data
+    class Device {
+        @Id
+        private int id;
     }
 }

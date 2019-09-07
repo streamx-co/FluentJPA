@@ -89,6 +89,10 @@ public class EmployeeRepositoryTest extends IntegrationTest {
         assertNotNull(phone.getEmployee().getId().getCompanyId());
 
         assertThat(employeeRepository.getAllNativeWhere("Vlad Mihalcea").size()).isEqualTo(1);
+
+        em.flush();
+        em.clear();
+
         assertThat(employeeRepository.getAllNative().size()).isEqualTo(1);
         assertThat(employeeRepository.getEmployeeCompanies().size()).isEqualTo(1);
         assertThat(employeeRepository.getEmployeeCompanies1().size()).isEqualTo(1);

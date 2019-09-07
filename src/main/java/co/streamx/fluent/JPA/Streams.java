@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.RandomAccess;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -27,6 +28,17 @@ interface Streams {
         List<TO> result = new ArrayList<>(source.size());
         source.forEach(f -> result.add(mapper.apply(f)));
         return result;
+    }
+
+    static <T> T find(List<T> list,
+                      Predicate<? super T> predicate) {
+
+        for (T x : list) {
+            if (predicate.test(x))
+                return x;
+        }
+
+        throw new IndexOutOfBoundsException();
     }
 
     static <E> List<E> join(List<E> a,

@@ -79,15 +79,16 @@ final class JPAHelpers {
     @Getter
     @RequiredArgsConstructor
     @ToString
-    private static class ID {
+    public static class ID {
 
         private final CharSequence path;
         private final CharSequence column;
+        private final Member member;
     }
 
     @Getter
     @ToString
-    private static final class ClassMeta {
+    public static final class ClassMeta {
 
         public ClassMeta(AccessType accessType) {
             this.accessType = accessType;
@@ -171,7 +172,7 @@ final class JPAHelpers {
             else {
                 String cur = path.toString();
                 String override = overrides.get(cur);
-                ids.add(new ID(cur, override != null ? override : getColumnName(f)));
+                ids.add(new ID(cur, override != null ? override : getColumnName(f), f));
             }
             path.setLength(length);
         }
@@ -216,7 +217,7 @@ final class JPAHelpers {
                     if (f.isAnnotationPresent(Id.class)) {
                         if (meta == null)
                             meta = new ClassMeta(AccessType.FIELD);
-                        meta.getIds().add(new ID(f.getName(), getColumnName(f)));
+                        meta.getIds().add(new ID(f.getName(), getColumnName(f), f));
                     } else if (f.isAnnotationPresent(EmbeddedId.class)) {
                         if (meta == null)
                             meta = new ClassMeta(AccessType.FIELD);
@@ -233,7 +234,7 @@ final class JPAHelpers {
                 if (m.isAnnotationPresent(Id.class)) {
                     if (meta == null)
                         meta = new ClassMeta(AccessType.PROPERTY);
-                    meta.getIds().add(new ID(m.getName(), getColumnName(m)));
+                    meta.getIds().add(new ID(m.getName(), getColumnName(m), m));
                 } else if (m.isAnnotationPresent(EmbeddedId.class)) {
                     if (meta == null)
                         meta = new ClassMeta(AccessType.PROPERTY);
@@ -254,6 +255,13 @@ final class JPAHelpers {
         if (type.isInterface())
             return AccessType.PROPERTY;
         return getClassMeta(type).getAccessType();
+    }
+
+    /**
+     * member must be annotated!
+     */
+    public static Association getAssociation(Member member) {
+        return getAssociation(member, true);
     }
 
     private static Association getAssociation(Member field,
@@ -563,7 +571,8 @@ final class JPAHelpers {
     }
 
     public static boolean isEmbedded(Member field) {
-        return getAnnotationFromProperty(field, Embedded.class) != null;
+        AnnotatedElement annotated = (AnnotatedElement) getAnnotatedField(field);
+        return annotated.isAnnotationPresent(Embedded.class) || annotated.isAnnotationPresent(EmbeddedId.class);
     }
 
     private static IdentifierPath getColumnName(Member field) {
@@ -609,7 +618,7 @@ final class JPAHelpers {
                 field.getName());
     }
 
-    private static ClassMeta getClassMeta(Class<?> declaringClass) {
+    public static ClassMeta getClassMeta(Class<?> declaringClass) {
         return ids.computeIfAbsent(declaringClass, JPAHelpers::findId);
     }
 

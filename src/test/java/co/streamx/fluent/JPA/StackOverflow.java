@@ -1,16 +1,19 @@
 package co.streamx.fluent.JPA;
 
 import static co.streamx.fluent.SQL.AggregateFunctions.COUNT;
+import static co.streamx.fluent.SQL.AggregateFunctions.MAX;
 import static co.streamx.fluent.SQL.AggregateFunctions.ROW_NUMBER;
 import static co.streamx.fluent.SQL.AggregateFunctions.SUM;
 import static co.streamx.fluent.SQL.Directives.aggregateBy;
 import static co.streamx.fluent.SQL.Directives.alias;
+import static co.streamx.fluent.SQL.Directives.discardSQL;
 import static co.streamx.fluent.SQL.Directives.injectSQL;
 import static co.streamx.fluent.SQL.Directives.parameter;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Library.pick;
 import static co.streamx.fluent.SQL.Library.selectAll;
 import static co.streamx.fluent.SQL.MySQL.SQL.GROUP_CONCAT;
+import static co.streamx.fluent.SQL.MySQL.SQL.IF;
 import static co.streamx.fluent.SQL.MySQL.SQL.LIMIT;
 import static co.streamx.fluent.SQL.MySQL.SQL.STR_TO_DATE;
 import static co.streamx.fluent.SQL.Operators.BETWEEN;
@@ -21,6 +24,7 @@ import static co.streamx.fluent.SQL.SQL.BY;
 import static co.streamx.fluent.SQL.SQL.DISTINCT;
 import static co.streamx.fluent.SQL.SQL.FROM;
 import static co.streamx.fluent.SQL.SQL.GROUP;
+import static co.streamx.fluent.SQL.SQL.HAVING;
 import static co.streamx.fluent.SQL.SQL.ORDER;
 import static co.streamx.fluent.SQL.SQL.PARTITION;
 import static co.streamx.fluent.SQL.SQL.SELECT;
@@ -52,6 +56,7 @@ import javax.persistence.Table;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import co.streamx.fluent.SQL.Alias;
 import co.streamx.fluent.SQL.JoinTable;
 import co.streamx.fluent.SQL.Oracle.Format;
 import co.streamx.fluent.SQL.Oracle.FormatModel;
@@ -569,5 +574,137 @@ public class StackOverflow implements CommonTest, StackOverflowTypes {
                 "LIMIT 5 ) q0  ON (t0.id = q0.user_id)";
         // @formatter:on
         assertQuery(query, expected);
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/57803756/hibernate-many-to-many-contains-specific-ids-using-criteria
+    public void TestMTMIds() {
+
+        List<String> categoryIds = Arrays.asList("a", "b");
+        getMoviesByCategories(categoryIds);
+    }
+
+    public void getMoviesByCategories(List<String> categoryIds) {
+        int matchTotal = categoryIds.size();
+
+        FluentQuery query = FluentJPA.SQL((Movie movie,
+                                           JoinTable<Movie, Category> movieCategory) -> {
+
+            discardSQL(movieCategory.join(movie, Movie::getCategories));
+
+            List<String> movieIds = subQuery(() -> {
+                String movieId = movieCategory.getJoined().getId();
+                String catId = movieCategory.getInverseJoined().getId();
+
+                SELECT(movieId);
+                FROM(movieCategory);
+                WHERE(categoryIds.contains(catId));
+                GROUP(BY(movieId));
+                HAVING(COUNT(movieId) == matchTotal); // COUNT(DISTINCT(movieId));
+            });
+
+            SELECT(movie);
+            FROM(movie);
+            WHERE(movieIds.contains(movie.getId()));
+
+        });
+
+//        query.createQuery(em, Movie.class).getResultList();
+
+        // @formatter:off
+        String expected = "SELECT t0.* " + 
+                "FROM t0 " + 
+                "WHERE (t0.id IN (SELECT t1.movie_id " + 
+                "FROM movie_category t1 " + 
+                "WHERE (t1.CATEGORIES_id IN ?1 ) " + 
+                "GROUP BY  t1.movie_id  " + 
+                "HAVING (COUNT(t1.movie_id) = ?2) ) )";
+        // @formatter:on
+        assertQuery(query, expected, arrayOf(categoryIds, matchTotal));
+    }
+
+    @Tuple
+    @Data
+    public static class StudentMarks {
+        private String name;
+        private int math;
+        private int physics;
+        private int chemistry;
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/57800309/jpa-criteria-api-aggregating-on-multiple-columns-with-if-condition
+    public void testMaxIf() {
+
+        FluentQuery query = FluentJPA.SQL((Student st,
+                                           Subject sub) -> {
+            Integer math = alias(MAX(IF(sub.getTitle() == "math", sub.getMarks(), 0)), StudentMarks::getMath);
+            Integer physics = alias(MAX(IF(sub.getTitle() == "physics", sub.getMarks(), 0)), StudentMarks::getPhysics);
+            Integer chemistry = alias(MAX(IF(sub.getTitle() == "chemistry", sub.getMarks(), 0)),
+                    StudentMarks::getChemistry);
+
+            SELECT(st.getName(), math, physics, chemistry);
+            FROM(st).LEFT_JOIN(sub).ON(sub.getStudent() == st);
+            GROUP(BY(st.getName()));
+        });
+
+//        query.createQuery(em, UserNameCount.class).getSingleResult();
+
+        // @formatter:off
+        String expected = "SELECT t0.name, MAX(IF((t1.title = 'math'), t1.marks, 0)) AS math, MAX(IF((t1.title = 'physics'), t1.marks, 0)) AS physics, MAX(IF((t1.title = 'chemistry'), t1.marks, 0)) AS chemistry " + 
+                "FROM STUDENTS t0  LEFT JOIN SUBJECTS t1  ON (t1.student_id = t0.id) " + 
+                "GROUP BY  t0.name";
+        // @formatter:on
+        assertQuery(query, expected);
+    }
+
+    @Tuple
+    @Getter
+    public static class OrderedErrorRecord extends ErrorRecord {
+        private int rowNumber;
+    }
+
+    @Tuple
+    @Getter
+    public static class ErrorTypeWithLastError extends ErrorType {
+        @Embedded
+        private ErrorContent errorContent;
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/57780699/javahibernate-how-to-fetch-limit-of-child-dependency-collection
+    public void testLastChild() {
+
+        int deviceId = 8;
+
+        FluentQuery query = FluentJPA.SQL((ErrorType errorType) -> {
+
+            OrderedErrorRecord orderedRec = subQuery((ErrorRecord errorRec) -> {
+                Alias<Number> rn = alias(aggregateBy(ROW_NUMBER())
+                        .OVER(PARTITION(BY(errorRec.getErrorType().getId())).ORDER(BY(errorRec.getCreatedAt()).DESC())),
+                        OrderedErrorRecord::getRowNumber);
+
+                SELECT(errorRec, rn);
+                FROM(errorRec);
+            });
+
+            WITH(orderedRec);
+            SELECT(errorType, orderedRec.getErrorDescription());
+            FROM(errorType).LEFT_JOIN(orderedRec)
+                    .ON(orderedRec.getErrorType() == errorType && orderedRec.getRowNumber() == 1);
+            WHERE(errorType.getDevice().getId() == deviceId);
+        });
+
+//        query.createQuery(em, UserNameCount.class).getSingleResult();
+
+        // @formatter:off
+        String expected = "WITH q0 AS " + 
+                "(SELECT t1.*,  ROW_NUMBER()  OVER(PARTITION BY  t1.error_type_id   ORDER BY  t1.created_at  DESC   ) AS row_number " + 
+                "FROM tbl_error_record t1 ) " + 
+                "SELECT t0.*, q0.error_description " + 
+                "FROM tbl_error_type t0  LEFT JOIN q0  ON ((q0.error_type_id = t0.id) AND (q0.row_number = 1)) " +
+                "WHERE (t0.device_id = ?1)";
+        // @formatter:on
+        assertQuery(query, expected, arrayOf(deviceId));
     }
 }
