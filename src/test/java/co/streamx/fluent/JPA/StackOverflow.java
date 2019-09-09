@@ -9,6 +9,7 @@ import static co.streamx.fluent.SQL.Directives.alias;
 import static co.streamx.fluent.SQL.Directives.discardSQL;
 import static co.streamx.fluent.SQL.Directives.injectSQL;
 import static co.streamx.fluent.SQL.Directives.parameter;
+import static co.streamx.fluent.SQL.Directives.recurseOn;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Library.pick;
 import static co.streamx.fluent.SQL.Library.selectAll;
@@ -17,6 +18,7 @@ import static co.streamx.fluent.SQL.MySQL.SQL.IF;
 import static co.streamx.fluent.SQL.MySQL.SQL.LIMIT;
 import static co.streamx.fluent.SQL.MySQL.SQL.STR_TO_DATE;
 import static co.streamx.fluent.SQL.Operators.BETWEEN;
+import static co.streamx.fluent.SQL.Operators.UNION_ALL;
 import static co.streamx.fluent.SQL.Operators.lessEqual;
 import static co.streamx.fluent.SQL.Oracle.SQL.TO_DATE;
 import static co.streamx.fluent.SQL.Oracle.SQL.registerVendorCapabilities;
@@ -27,6 +29,7 @@ import static co.streamx.fluent.SQL.SQL.GROUP;
 import static co.streamx.fluent.SQL.SQL.HAVING;
 import static co.streamx.fluent.SQL.SQL.ORDER;
 import static co.streamx.fluent.SQL.SQL.PARTITION;
+import static co.streamx.fluent.SQL.SQL.RECURSIVE;
 import static co.streamx.fluent.SQL.SQL.SELECT;
 import static co.streamx.fluent.SQL.SQL.UPDATE;
 import static co.streamx.fluent.SQL.SQL.WHERE;
@@ -706,5 +709,57 @@ public class StackOverflow implements CommonTest, StackOverflowTypes {
                 "WHERE (t0.device_id = ?1)";
         // @formatter:on
         assertQuery(query, expected, arrayOf(deviceId));
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/57831475/search-with-the-supplied-value-in-the-current-and-all-successive-parents-when-bo
+    public void testSuccParents() {
+
+        String aggKey = "aggKey";
+        String aggValue = "aggValue";
+
+        FluentQuery query = getDetailsByAggregator(aggKey, aggValue);
+
+        // @formatter:off
+        String expected = "WITH RECURSIVE q0  AS " + 
+                "(SELECT t2.* " + 
+                "FROM QUALITY_AGGREGATOR t2 " + 
+                "WHERE ((t2.agg_key = ?1) AND (t2.agg_value = ?2)) " + 
+                "UNION ALL  " + 
+                "SELECT t3.* " + 
+                "FROM QUALITY_AGGREGATOR t3  INNER JOIN q0 t1  ON (t3.parent_agg_id = t1.agg_id) )" + 
+                
+                "SELECT DISTINCT t0.* " + 
+                "FROM INFLUENCE_DETAILS t0  INNER JOIN q0  ON (t0.aggregator_id = q0.agg_id)";
+        // @formatter:on
+        assertQuery(query, expected, arrayOf(aggKey, aggValue));
+    }
+
+    private FluentQuery getDetailsByAggregator(String aggKey,
+                                               String aggValue) {
+        FluentQuery query = FluentJPA.SQL((InfluenceDetails details) -> {
+
+            QualityAggregator relevantAgg = subQuery((QualityAggregator it,
+                                                      QualityAggregator agg,
+                                                      QualityAggregator child) -> {
+                SELECT(agg);
+                FROM(agg);
+                WHERE(agg.getAggKey() == aggKey && agg.getAggValue() == aggValue);
+
+                UNION_ALL();
+
+                SELECT(child);
+                FROM(child).JOIN(recurseOn(it)).ON(child.getParent() == it);
+            });
+
+            WITH(RECURSIVE(relevantAgg));
+
+            SELECT(DISTINCT(details));
+            FROM(details).JOIN(relevantAgg).ON(details.getAggregators() == relevantAgg);
+        });
+
+//      query.createQuery(em, UserNameCount.class).getSingleResult();
+
+        return query;
     }
 }

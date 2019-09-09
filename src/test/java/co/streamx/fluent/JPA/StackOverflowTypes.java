@@ -1,6 +1,7 @@
 package co.streamx.fluent.JPA;
 
 import java.sql.Timestamp;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -19,14 +20,19 @@ import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.MappedSuperclass;
 import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
 import javax.persistence.OrderBy;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 
 import co.streamx.fluent.notation.Tuple;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
 public interface StackOverflowTypes {
 
@@ -365,5 +371,79 @@ public interface StackOverflowTypes {
     class Device {
         @Id
         private int id;
+    }
+
+    @Tuple
+    @Table(name = "INFLUENCE_DETAILS")
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Data
+    public class InfluenceDetails {
+
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        private Long id;
+
+        @Column(name = "influence_summary_id", length = 64)
+        private Long influenceSummaryId;
+
+        @OneToOne(fetch = FetchType.EAGER)
+        @JoinColumn(name = "aggregator_id", nullable = false, referencedColumnName = "agg_id", updatable = false, insertable = false)
+        private QualityAggregator aggregators;
+
+        @Column(name = "rule_id", length = 64)
+        private String ruleId;
+
+        @Column(name = "rule_desc", nullable = false)
+        private String ruleDesc;
+
+        @Column(name = "value")
+        private String value;
+    }
+
+    @Tuple
+    @Table(name = "QUALITY_AGGREGATOR")
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Accessors(chain = true)
+    @Builder
+    @Data
+    public class QualityAggregator {
+
+        @Id
+        @Column(name = "agg_id")
+        private String aggId;
+
+        @Column(name = "project_id")
+        private String projectId;
+
+        @Column(name = "job_id")
+        private String jobId;
+
+        @Column(name = "job_instance_id")
+        private String jobInstanceId;
+
+        @Column(name = "created_at")
+        private Date timestamp;
+
+        @Column(name = "agg_key")
+        private String aggKey;
+
+        @Column(name = "agg_value")
+        private String aggValue;
+
+        @Column(name = "level")
+        private Integer level;
+
+        @Column(name = "parent_agg_id")
+        private String parentAggId;
+
+        @ManyToOne(fetch = FetchType.LAZY)
+        @JoinColumn(name = "parent_agg_id", referencedColumnName = "agg_id", insertable = false, updatable = false)
+        private QualityAggregator parent;
+
+        @OneToMany(mappedBy = "parent", fetch = FetchType.EAGER)
+        private Set<QualityAggregator> children;
     }
 }
