@@ -26,7 +26,7 @@ There is no bootstrap, code generation step or anything else needed to use Fluen
 
 Let's start with the simplest query possible to overview the entire flow. (A bit spiced with passing an external parameter and optional JPA Repository integration)
 
-### Example 0 - [testPassArguments()](src/test/java/co/streamx/fluent/JPA/PersonRepositoryTest.java)
+### Example 0 - [testPassArguments()](src/test/java/co/streamx/fluent/JPA/PersonRepository.java#L24-L40)
 
 ```java
 @Repository
@@ -52,9 +52,9 @@ FROM PERSON_TABLE t0
 WHERE (t0.name = ?)
 ```
 
-FluentJPA supports _**any**_ query, here we brought few examples with sub queries to show the power of FluentJPA. There is a link to the test file source code labeled as a method name above each example. And a link to the original SQL where we borrowed the use case from. Best when seen side-by-side.
+FluentJPA supports _**any**_ query, here we brought few examples with sub queries to show the power of FluentJPA. There is a link to the test file source code and a link to the original SQL where we borrowed the use case from. Best when seen side-by-side.
 
-### Example 1 - [testCorrelatedWithHaving()](src/test/java/co/streamx/fluent/JPA/testSELECT.java)
+### Example 1 - [testCorrelatedWithHaving()](src/test/java/co/streamx/fluent/JPA/testSELECT.java#L161-L186)
 
 **1 sub query "converted" to a Java function** (original SQL comes from [SQL Server documentation](https://docs.microsoft.com/en-us/sql/t-sql/queries/select-examples-transact-sql?view=sql-server-2017#e-using-correlated-subqueries)).
 
@@ -83,7 +83,7 @@ private static int avgPriceForProductModel(ProductModel model) {
 }
 ```
 
-### Example 2 - [testInsertFromOUTPUT()](src/test/java/co/streamx/fluent/JPA/testMERGE.java)
+### Example 2 - [testInsertFromOUTPUT()](src/test/java/co/streamx/fluent/JPA/testMERGE.java#L124-L198)
 
 **3 sub queries "converted" to functions** (original SQL comes from [SQL Server documentation](https://docs.microsoft.com/en-us/sql/t-sql/queries/output-clause-transact-sql#k-inserting-data-returned-from-an-output-clause)).
 
@@ -159,7 +159,7 @@ private static void trackNoInventory(Change change) {
 
 ```
 
-### Example 3 - [testCTE_Recursive_DELETE()](src/test/java/co/streamx/fluent/JPA/TestSQL.java)
+### Example 3 - [testCTE_Recursive_DELETE()](src/test/java/co/streamx/fluent/SQL/TestSQL.java#L443-L468)
 
 **Recursive sub query** (original SQL comes from [PostgreSQL documentation](https://www.postgresql.org/docs/current/queries-with.html)).
 
@@ -195,7 +195,7 @@ FluentJPA.SQL((Part allParts) -> {
 });
 ```
 
-### Example 4 - [getByNameLike()](src/test/java/co/streamx/fluent/JPA/GrammarTest.java)
+### Example 4 - [getByNameLike()](src/test/java/co/streamx/fluent/JPA/GrammarTest.java#L299-L320)
 
 [Dynamic Queries](https://github.com/streamx-co/FluentJPA/wiki/Dynamic-Queries) without [Criteria API](https://en.wikibooks.org/wiki/Java_Persistence/Criteria):
 
