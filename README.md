@@ -26,7 +26,7 @@ There is no bootstrap, code generation step or anything else needed to use Fluen
 
 Let's start with the simplest query possible to overview the entire flow. (A bit spiced with passing an external parameter and optional JPA Repository integration)
 
-### Example 0 - [testPassArguments()](src/test/java/co/streamx/fluent/JPA/PersonRepository.java#L24-L40)
+### Example 0 - [testPassArguments()](src/test/java/co/streamx/fluent/JPA/repository/PersonRepository.java#L24-L40)
 
 ```java
 @Repository
