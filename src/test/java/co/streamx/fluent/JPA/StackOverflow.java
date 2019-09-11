@@ -27,13 +27,16 @@ import static co.streamx.fluent.SQL.SQL.DISTINCT;
 import static co.streamx.fluent.SQL.SQL.FROM;
 import static co.streamx.fluent.SQL.SQL.GROUP;
 import static co.streamx.fluent.SQL.SQL.HAVING;
+import static co.streamx.fluent.SQL.SQL.INSERT;
 import static co.streamx.fluent.SQL.SQL.ORDER;
 import static co.streamx.fluent.SQL.SQL.PARTITION;
 import static co.streamx.fluent.SQL.SQL.RECURSIVE;
 import static co.streamx.fluent.SQL.SQL.SELECT;
 import static co.streamx.fluent.SQL.SQL.UPDATE;
+import static co.streamx.fluent.SQL.SQL.VALUES;
 import static co.streamx.fluent.SQL.SQL.WHERE;
 import static co.streamx.fluent.SQL.SQL.WITH;
+import static co.streamx.fluent.SQL.SQL.row;
 import static co.streamx.fluent.SQL.ScalarFunctions.CASE;
 import static co.streamx.fluent.SQL.ScalarFunctions.CURRENT_DATE;
 import static co.streamx.fluent.SQL.ScalarFunctions.WHEN;
@@ -760,6 +763,29 @@ public class StackOverflow implements CommonTest, StackOverflowTypes {
 
 //      query.createQuery(em, UserNameCount.class).getSingleResult();
 
+        return query;
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/57887521/hibernate-set-an-manytoone-column-value-just-with-id-without-an-instance-of-o
+    public void testInsertMTMId() {
+
+        int productId = 5;
+
+        FluentQuery query = createOrderProduct(productId);
+
+        // @formatter:off
+        String expected = "INSERT   INTO order_product t0 " + 
+                "VALUES (?1)";
+        // @formatter:on
+        assertQuery(query, expected, arrayOf(productId));
+    }
+
+    private FluentQuery createOrderProduct(int productId) {
+        FluentQuery query = FluentJPA.SQL((OrderProduct op) -> {
+            INSERT().INTO(op);
+            VALUES(row(productId));
+        });
         return query;
     }
 }

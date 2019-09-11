@@ -446,4 +446,37 @@ public interface StackOverflowTypes {
         @OneToMany(mappedBy = "parent", fetch = FetchType.EAGER)
         private Set<QualityAggregator> children;
     }
+
+    @Tuple
+    @Table(name = "product")
+    public class Product {
+
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        @Column(name = "id")
+        private Integer id;
+
+        @OneToMany(fetch = FetchType.LAZY, mappedBy = "product")
+        private Set<OrderProduct> orderProductList = new LinkedHashSet<>();
+
+        // ...
+
+    }
+
+    @Tuple
+    @Table(name = "order_product")
+    public class OrderProduct {
+
+        @Id
+        @GeneratedValue(strategy = GenerationType.IDENTITY)
+        @Column(name = "id")
+        private Integer id;
+
+        @ManyToOne(fetch = FetchType.EAGER)
+        @JoinColumn(name = "product_id")
+        private Product product;
+
+        // ...
+
+    }
 }
