@@ -51,7 +51,7 @@ import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
 import lombok.Getter;
 
-public class testSELECT implements CommonTest {
+public class testSELECT implements CommonTest, ElementCollectionTypes {
 
     @BeforeAll
     public static void init() {
@@ -377,6 +377,20 @@ public class testSELECT implements CommonTest {
         String expected = "SELECT CAST(t0.payment_date AS DATE) AS payment_date, SUM(t0.amount) AS amount, CAST(((100 *  SUM(SUM(t0.amount))  OVER(ORDER BY  CAST(t0.payment_date AS DATE)  )) /  SUM(SUM(t0.amount))  OVER()) AS NUMERIC(10,2)) AS percentage "
                 + "FROM payment t0 " + "GROUP BY  CAST(t0.payment_date AS DATE)  "
                 + "ORDER BY  CAST(t0.payment_date AS DATE)";
+
+        assertQuery(query, expected);
+    }
+
+    @Test
+    public void testAssocOverride() throws Exception {
+
+        FluentQuery query = FluentJPA.SQL((PartTimeEmployee pte) -> {
+
+            SELECT(pte.getUser().getId());
+            FROM(pte);
+        });
+
+        String expected = "SELECT NEXT VALUE FOR myseq  AS X, NEXT VALUE FOR static";
 
         assertQuery(query, expected);
     }
