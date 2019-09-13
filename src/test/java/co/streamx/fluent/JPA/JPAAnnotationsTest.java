@@ -12,6 +12,7 @@ import java.math.BigInteger;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
+import javax.transaction.Transactional;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,7 @@ import co.streamx.fluent.SQL.PostgreSQL.DataTypeNames;
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
 
-public class JPAAnnotationsTest extends IntegrationTest {
+public class JPAAnnotationsTest extends IntegrationTest implements JPAAnnotationTestTypes {
 
     @PersistenceContext
     private EntityManager em;
@@ -109,5 +110,41 @@ public class JPAAnnotationsTest extends IntegrationTest {
 
         assertThrows(IndexOutOfBoundsException.class, () -> query1.createQuery(em, MyTuple.class).getSingleResult(),
                 "Alias 'GGG' for column 0 not found");
+    }
+
+    @Test
+    @Transactional
+    public void testMTMWithDiscriminator() {
+//        FluentQuery query = FluentJPA.SQL((User u) -> {
+//
+//            SELECT(u);
+//            FROM(u);
+//
+//        });
+//
+//        query.createQuery(em, User.class).getResultList();
+
+        User u = new User();
+        u.setName("aaa");
+
+        Group g = new Group();
+
+        g.getMembers().add(u);
+        u.getParents().add(g);
+
+        em.persist(u);
+        em.persist(g);
+
+        em.flush();
+        em.clear();
+
+        Group g1 = em.find(Group.class, g.getId());
+
+        em.clear();
+
+        em.find(User.class, u.getId());
+//        assertEquals(7, actual.intValue());
+
+
     }
 }
