@@ -479,4 +479,36 @@ public interface StackOverflowTypes {
         // ...
 
     }
+
+    @Tuple
+    @Table(name = "tab1")
+    @Data
+    class Table1 {
+        @Id
+        private Integer id;
+        long projectId;
+        long empId;
+    }
+
+    @Tuple
+    @Table(name = "tab2")
+    @Data
+    class Table2 {
+        @Id
+        private Integer id;
+        long bpId;
+        @Column(name = "projectName")
+        String projectName;
+    }
+
+    @Tuple
+    @Table(name = "tab3")
+    @Data
+    class Table3 {
+        @Id
+        private Integer id;
+        @Column(name = "empName")
+        String empName;
+        String contactNum;
+    }
 }

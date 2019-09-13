@@ -788,4 +788,37 @@ public class StackOverflow implements CommonTest, StackOverflowTypes {
         });
         return query;
     }
+
+    @Tuple
+    @Data
+    public static class MultiTab {
+        long id;
+        long projectId;
+        long empId;
+        @Column(name = "projName")
+        String projectName;
+        @Column(name = "empName")
+        String empName;
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/57907574/jpa-criteria-query-select-from-3-tables-based-on-id
+    public void testJoinNoCondition() {
+
+        FluentQuery query = FluentJPA.SQL((Table1 t1,
+                                           Table2 t2,
+                                           Table3 t3) -> {
+            SELECT(t1.getId(), t1.getProjectId(), t1.getEmpId(), alias(t2.getProjectName(), MultiTab::getProjectName),
+                    t3.getEmpName());
+            FROM(t1, t2, t3);
+            WHERE(t1.getEmpId() == t3.getId() && t1.getProjectId() == t2.getId());
+        });
+
+        // @formatter:off
+        String expected = "SELECT t0.id, t0.project_id, t0.emp_id, t1.projectName AS projName, t2.empName " + 
+                "FROM tab1 t0, tab2 t1, tab3 t2 " + 
+                "WHERE ((t0.emp_id = t2.id) AND (t0.project_id = t1.id))";
+        // @formatter:on
+        assertQuery(query, expected);
+    }
 }
