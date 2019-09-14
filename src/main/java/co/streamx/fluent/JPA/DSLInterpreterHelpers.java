@@ -26,6 +26,7 @@ interface DSLInterpreterHelpers {
     final class DynamicConstant implements UnboundCharSequence {
 
         private CharSequence string;
+        @Getter
         private final Object value;
         private final DSLInterpreter dsl;
 

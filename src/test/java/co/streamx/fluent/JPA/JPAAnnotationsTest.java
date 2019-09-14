@@ -1,14 +1,17 @@
 package co.streamx.fluent.JPA;
 
 import static co.streamx.fluent.SQL.Directives.alias;
+import static co.streamx.fluent.SQL.Directives.secondaryTable;
 import static co.streamx.fluent.SQL.PostgreSQL.SQL.LENGTH;
 import static co.streamx.fluent.SQL.PostgreSQL.SQL.registerVendorCapabilities;
 import static co.streamx.fluent.SQL.SQL.FROM;
 import static co.streamx.fluent.SQL.SQL.SELECT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigInteger;
+import java.util.List;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
@@ -125,7 +128,8 @@ public class JPAAnnotationsTest extends IntegrationTest implements JPAAnnotation
 //        query.createQuery(em, User.class).getResultList();
 
         User u = new User();
-        u.setName("aaa");
+        String AAA = "aaa";
+        u.setName(AAA);
 
         Group g = new Group();
 
@@ -139,12 +143,29 @@ public class JPAAnnotationsTest extends IntegrationTest implements JPAAnnotation
         em.clear();
 
         Group g1 = em.find(Group.class, g.getId());
+        assertNotNull(g1);
+        assertEquals(0, g1.getParents().size());
+        assertEquals(1, g1.getMembers().size());
 
         em.clear();
 
-        em.find(User.class, u.getId());
-//        assertEquals(7, actual.intValue());
+        User u1 = em.find(User.class, u.getId());
+        assertNotNull(u1);
+        assertEquals(1, u1.getParents().size());
 
+        em.clear();
 
+        FluentQuery query = FluentJPA.SQL((User uu) -> {
+
+            User uSec = secondaryTable(uu);
+
+            SELECT(uu, uSec.getName());
+            FROM(uu).JOIN(uSec).ON(uu == uSec);
+        });
+
+        List<User> users = query.createQuery(em, User.class).getResultList();
+        assertEquals(1, users.size());
+
+        assertEquals(AAA, users.get(0).getName());
     }
 }

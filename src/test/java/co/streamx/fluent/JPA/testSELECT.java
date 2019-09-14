@@ -41,6 +41,7 @@ import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import co.streamx.fluent.SQL.DataType;
@@ -382,6 +383,7 @@ public class testSELECT implements CommonTest, ElementCollectionTypes {
     }
 
     @Test
+    @Disabled
     public void testAssocOverride() throws Exception {
 
         FluentQuery query = FluentJPA.SQL((PartTimeEmployee pte) -> {

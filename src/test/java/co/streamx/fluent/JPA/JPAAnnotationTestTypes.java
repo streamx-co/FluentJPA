@@ -15,6 +15,7 @@ import javax.persistence.InheritanceType;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
+import javax.persistence.PrimaryKeyJoinColumn;
 import javax.persistence.SecondaryTable;
 import javax.persistence.Table;
 
@@ -58,7 +59,7 @@ public interface JPAAnnotationTestTypes {
 
     @Entity
     @DiscriminatorValue("U")
-    @SecondaryTable(name = "USERS", schema = "mtm")
+    @SecondaryTable(name = "USERS", schema = "mtm", pkJoinColumns = @PrimaryKeyJoinColumn(name = "UID"))
     @Data
     @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
     class User extends GroupMember {

@@ -23,7 +23,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +59,7 @@ import co.streamx.fluent.notation.Literal;
 import co.streamx.fluent.notation.Operator;
 import co.streamx.fluent.notation.Parameter;
 import co.streamx.fluent.notation.ParameterContext;
+import co.streamx.fluent.notation.ReferenceSecondaryTable;
 import co.streamx.fluent.notation.SubQuery;
 import co.streamx.fluent.notation.TableCollection;
 import co.streamx.fluent.notation.TableCollection.Property;
@@ -98,7 +98,9 @@ final class DSLInterpreter
     private final Set<Capability> capabilities;
 
     private SubQueryManager subQueries_ = new SubQueryManager(Collections.emptyList());
-    private Set<CharSequence> tableRefs = new HashSet<>();
+    // PRIMARY value - primary, empty string - the only secondary, otherwise - named secondary
+    private static final String PRIMARY = new String("PRIMARY");
+    private Map<CharSequence, String> tableRefs = new HashMap<>();
     private Map<CharSequence, CharSequence> aliases_ = Collections.emptyMap();
     private CharSequence subQueryAlias;
     private List<CharSequence> undeclaredAliases = Collections.emptyList();
@@ -161,22 +163,34 @@ final class DSLInterpreter
             Function<List<CharSequence>, CharSequence> left = efirst.apply(eargs);
             Function<List<CharSequence>, CharSequence> right = esecond.apply(eargs);
 
-            Association assoc = (e.getExpressionType() == ExpressionType.Equal)
-                    && (isEntityLike(first.getResultType()) || isCollection(first.getResultType()))
-                    && (isEntityLike(second.getResultType()) || isCollection(second.getResultType()))
-                            ? getAssociation(first, second)
-                            : null;
-
             switch (e.getExpressionType()) {
             case ExpressionType.Equal:
                 Map<CharSequence, CharSequence> aliases = getAliases();
                 return (args) -> {
-                    if (assoc != null)
+
+                    boolean isAssoc = (isEntityLike(first.getResultType()) || isCollection(first.getResultType()))
+                            && (isEntityLike(second.getResultType()) || isCollection(second.getResultType()));
+
+                    if (isAssoc)
                         renderingAssociation = true;
                     CharSequence lseq = left.apply(args);
                     CharSequence rseq = right.apply(args);
-                    if (assoc != null) {
+                    if (isAssoc) {
                         renderingAssociation = false;
+                        Association assoc;
+
+                        // check if any of params is a sec table reference
+                        String secondary = tableRefs.get(args.get(0));
+                        if (secondary != null && secondary != PRIMARY)
+                            assoc = getAssociation(first.getResultType(), secondary, true);
+                        else {
+                            secondary = tableRefs.get(args.get(1));
+                            if (secondary != null && secondary != PRIMARY)
+                                assoc = getAssociation(second.getResultType(), secondary, false);
+                            else
+                                assoc = getAssociation(first, second);
+                        }
+
                         return renderAssociation(new StringBuilder(), assoc, aliases, lseq, rseq);
                     }
                     return renderBinaryOperator(lseq, EQUAL_SIGN, rseq);
@@ -618,6 +632,22 @@ final class DSLInterpreter
                 };
             }
 
+            if (m.isAnnotationPresent(ReferenceSecondaryTable.class)) {
+                return ipp -> pp -> {
+                    String secondary;
+
+                    if (pp.size() > 1) {
+                        CharSequence secTableName = pp.get(1);
+                        if (!(secTableName instanceof DynamicConstant))
+                            throw TranslationError.SECONDARY_TABLE_NOT_CONSTANT.getError(secTableName);
+                        secondary = String.valueOf(((DynamicConstant) secTableName).getValue());
+                    } else {
+                        secondary = "";
+                    }
+                    return registerTableReference(instanceArguments.get(0), secondary);
+                };
+            }
+
             CommonTableExpression cte = m.getAnnotation(CommonTableExpression.class);
             if (cte != null) {
 
@@ -1028,7 +1058,8 @@ final class DSLInterpreter
     }
 
     private CharSequence resolveTableName(CharSequence seq,
-                                       Class<?> resultType) {
+                                          Class<?> resultType,
+                                          String secondary) {
         Member joinTable = joinTablesForFROM.get(seq);
         if (joinTable != null)
             return getJoinTableName(joinTable);
@@ -1037,7 +1068,9 @@ final class DSLInterpreter
         if (joinTable != null)
             return getECTableName(joinTable);
 
-        return getTableName(resultType);
+        if (secondary == PRIMARY)
+            secondary = null;
+        return getTableName(resultType, secondary);
     }
 
     private CharSequence handleFromClause(CharSequence seq,
@@ -1070,7 +1103,8 @@ final class DSLInterpreter
             return label;
         }
 
-        CharSequence tableName = tableRefs.contains(seq) ? resolveTableName(seq, resultType) : null;
+        String secondary = tableRefs.get(seq);
+        CharSequence tableName = secondary != null ? resolveTableName(seq, resultType, secondary) : null;
         if (hasLabel && tableName == null)
             tableName = seq instanceof RequiresParenthesesInAS
                     ? new StringBuilder(LEFT_PARAN).append(((RequiresParenthesesInAS) seq).getWrapped())
@@ -1146,13 +1180,7 @@ final class DSLInterpreter
                 final int index = e.getIndex();
 
                 if (t.isEmpty() || index >= t.size()) {
-                    Class<?> resultType = e.getResultType();
-                    if (!isEntityLike(resultType))
-                        throw TranslationError.CANNOT_CALCULATE_TABLE_REFERENCE.getError(resultType);
-                    CharSequence tableRef = calcOverrides(
-                            new StringBuilder(TABLE_ALIAS_PREFIX).append(parameterCounter++), resultType);
-                    tableRefs.add(tableRef);
-                    return registerJoinTable(tableRef, e);
+                    return registerTableReference(e, PRIMARY);
                 }
 
                 return registerJoinTable(t.get(index), e);
@@ -1160,8 +1188,19 @@ final class DSLInterpreter
         };
     }
 
+    private CharSequence registerTableReference(Expression e,
+                                                String secondary) {
+        Class<?> resultType = e.getResultType();
+        if (!isEntityLike(resultType))
+            throw TranslationError.CANNOT_CALCULATE_TABLE_REFERENCE.getError(resultType);
+        CharSequence tableRef = calcOverrides(
+                new StringBuilder(TABLE_ALIAS_PREFIX).append(parameterCounter++), resultType);
+        tableRefs.put(tableRef, secondary);
+        return registerJoinTable(tableRef, e);
+    }
+
     private CharSequence registerJoinTable(CharSequence seq,
-                                           ParameterExpression e) {
+                                           Expression e) {
         Member joinTable = joinTables.get(e);
         if (joinTable != null)
             joinTablesForFROM.put(seq, joinTable);

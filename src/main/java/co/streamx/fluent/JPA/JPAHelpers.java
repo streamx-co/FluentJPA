@@ -13,9 +13,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.persistence.AccessType;
 import javax.persistence.AttributeOverride;
@@ -36,6 +38,9 @@ import javax.persistence.ManyToOne;
 import javax.persistence.MapsId;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
+import javax.persistence.PrimaryKeyJoinColumn;
+import javax.persistence.SecondaryTable;
+import javax.persistence.SecondaryTables;
 import javax.persistence.Table;
 
 import co.streamx.fluent.extree.expression.Expression;
@@ -122,6 +127,43 @@ final class JPAHelpers {
     }
 
     private static final Map<Class<?>, ClassMeta> ids = new ConcurrentHashMap<>();
+
+    public static Association getAssociation(Class<?> entity,
+                                             String secondary,
+                                             boolean left) {
+
+        SecondaryTable table = getSecondaryTableAnnotation(entity, secondary);
+        PrimaryKeyJoinColumn[] pkCols = table.pkJoinColumns();
+
+        List<ID> typeIds = getClassMeta(entity).getIds();
+        if (pkCols.length == 0) {
+            List<CharSequence> columns = Streams.map(typeIds, ID::getColumn);
+            return new Association(columns, columns, left);
+        }
+
+        List<CharSequence> other = new ArrayList<>();
+        List<CharSequence> that = new ArrayList<>();
+
+        for (int i = 0; i < pkCols.length; i++) {
+            PrimaryKeyJoinColumn join = pkCols[i];
+
+            if (!Strings.isNullOrEmpty(join.referencedColumnName()))
+                other.add(join.referencedColumnName());
+            else {
+                // extension to Standard: HN seems to go positional here
+                other.add(typeIds.get(i).getColumn());
+            }
+
+            if (!Strings.isNullOrEmpty(join.name()))
+                that.add(join.name());
+            else {
+                that.add(typeIds.get(i).getColumn());
+            }
+
+        }
+
+        return new Association(that, other, left);
+    }
 
     public static Association getAssociation(Expression left,
                                              Expression right) {
@@ -517,10 +559,61 @@ final class JPAHelpers {
         return name;
     }
 
-    public static String getTableName(Class<?> entity) {
+    private static Table getTableAnnotation(Class<?> entity) {
+        Table tableA = entity.getAnnotation(Table.class);
+        if (tableA != null)
+            return tableA;
+
+        entity = entity.getSuperclass();
         if (!isEntityLike(entity))
             return null;
-        Table tableA = entity.getAnnotation(Table.class);
+        return getTableAnnotation(entity);
+    }
+
+    private static SecondaryTable getSecondaryTableAnnotation(Class<?> entity,
+                                                              String secondary) {
+        if (!isEntityLike(entity))
+            throw TranslationError.SECONDARY_TABLE_NOT_FOUND.getError(entity, secondary);
+        SecondaryTable tableA = entity.getAnnotation(SecondaryTable.class);
+        if (tableA != null) {
+            if (secondary.isEmpty() || secondary.equalsIgnoreCase(tableA.name()))
+                return tableA;
+
+            throw TranslationError.SECONDARY_TABLE_NOT_FOUND.getError(entity, secondary);
+        }
+
+        SecondaryTables secTables = entity.getAnnotation(SecondaryTables.class);
+        if (secTables != null) {
+            if (secondary.isEmpty()) {
+                if (secTables.value().length == 1)
+                    return secTables.value()[0];
+
+                throw TranslationError.SECONDARY_TABLE_NOT_FOUND.getError(entity, secondary);
+            } else {
+                Optional<SecondaryTable> found = Stream.of(secTables.value())
+                        .filter(st -> secondary.equalsIgnoreCase(st.name()))
+                        .findFirst();
+                return found.orElseThrow(() -> TranslationError.SECONDARY_TABLE_NOT_FOUND.getError(entity, secondary));
+            }
+        }
+
+        return getSecondaryTableAnnotation(entity.getSuperclass(), secondary);
+    }
+
+    public static String getTableName(Class<?> entity) {
+        return getTableName(entity, null);
+    }
+
+    public static String getTableName(Class<?> entity,
+                                      String secondary) {
+        if (secondary != null) {
+            SecondaryTable secondaryTable = getSecondaryTableAnnotation(entity, secondary);
+            return buildFullTableName(secondaryTable.catalog(), secondaryTable.schema(), secondaryTable.name());
+        }
+
+        if (!isEntityLike(entity))
+            return null;
+        Table tableA = getTableAnnotation(entity);
         String name;
 
         if (tableA != null) {
