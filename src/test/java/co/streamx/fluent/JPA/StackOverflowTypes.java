@@ -511,4 +511,30 @@ public interface StackOverflowTypes {
         String empName;
         String contactNum;
     }
+
+    @Tuple
+    @Data
+    public class Person {
+        @Id
+        private Long id;
+        private String firstName;
+        private String lastName;
+        private int age;
+    }
+
+    @Data // lombok annotation to create constructor, equals and hash-code
+    public class PersonDTO {
+        private String firstName;
+        private String lastName;
+    }
+
+    @Tuple
+    @Data
+    public class BrandMerchant {
+        @Id
+        private Long id;
+        private Table3 brand;
+        private Table3 category;
+        private Table3 merchant;
+    }
 }

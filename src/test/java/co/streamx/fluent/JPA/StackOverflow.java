@@ -821,4 +821,68 @@ public class StackOverflow implements CommonTest, StackOverflowTypes {
         // @formatter:on
         assertQuery(query, expected);
     }
+
+    @Test
+    // https://stackoverflow.com/questions/57925877/spring-data-jpa-class-based-projections-with-custom-query
+    public void testClassBasedProjections() {
+
+        FluentQuery query = findDistinctQuery();
+
+        // @formatter:off
+        String expected = "SELECT DISTINCT t0.first_name, t0.last_name  " + 
+                "FROM t0";
+        // @formatter:on
+        assertQuery(query, expected);
+    }
+
+    public FluentQuery findDistinctQuery() {
+        FluentQuery query = FluentJPA.SQL((Person p) -> {
+            SELECT(DISTINCT(p.getFirstName(), p.getLastName()));
+            FROM(p);
+        });
+        return query;
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/57925877/spring-data-jpa-class-based-projections-with-custom-query
+    public void testFindMerchants() {
+
+        Integer[] criteria = { 1, 2, 3 };
+        List<Integer[]> params = Arrays.asList(criteria, criteria);
+
+        FluentQuery query = findMerchants(params);
+
+        // @formatter:off
+        String expected = "SELECT t0.* " + 
+                "FROM t0 " + 
+                "WHERE (((t0.brand = 1) AND ((t0.merchant = 2) AND (t0.category = 3))) OR ((t0.brand = 1) AND ((t0.merchant = 2) AND (t0.category = 3))))";
+        // @formatter:on
+        assertQuery(query, expected);
+    }
+
+    public FluentQuery findMerchants(List<Integer[]> params) {
+
+        Function1<BrandMerchant, Boolean> dynamicFilter = buildOr(params);
+
+        FluentQuery query = FluentJPA.SQL((BrandMerchant m) -> {
+            SELECT(m);
+            FROM(m);
+            WHERE(dynamicFilter.apply(m));
+        });
+        return query;
+    }
+
+    private Function1<BrandMerchant, Boolean> buildOr(List<Integer[]> params) {
+        Function1<BrandMerchant, Boolean> criteria = Function1.FALSE();
+
+        for (Integer[] tuple : params) {
+            int brandId = tuple[0];
+            int merchantId = tuple[1];
+            int categoryId = tuple[2];
+            criteria = criteria.or(m -> m.getBrand().getId() == brandId && m.getMerchant().getId() == merchantId
+                    && m.getCategory().getId() == categoryId);
+        }
+
+        return criteria;
+    }
 }
