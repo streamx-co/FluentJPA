@@ -10,12 +10,14 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 interface IdentifierPath extends UnboundCharSequence {
-    default CharSequence resolveInstance(CharSequence inst) {
-        return resolveInstance(inst, false);
+    default CharSequence resolveInstance(CharSequence inst,
+                                         Map<String, CharSequence> secondaryResolver) {
+        return resolveInstance(inst, false, secondaryResolver);
     }
 
     CharSequence resolveInstance(CharSequence inst,
-                                 boolean withoutInstance);
+                                 boolean withoutInstance,
+                                 Map<String, CharSequence> secondaryResolver);
 
     default CharSequence resolve(IdentifierPath path) {
         return resolve(path, false);
@@ -45,6 +47,21 @@ interface IdentifierPath extends UnboundCharSequence {
         return false;
     }
 
+    static CharSequence resolveInstance(CharSequence inst,
+                                        String table,
+                                        Map<String, CharSequence> secondaryResolver) {
+        if (!Strings.isNullOrEmpty(table) && secondaryResolver != null) {
+            CharSequence inst1 = secondaryResolver.get(table);
+            if (inst1 == null)
+                inst1 = secondaryResolver.get("");
+
+            if (inst1 != null)
+                inst = inst1;
+        }
+
+        return inst;
+    }
+
     @RequiredArgsConstructor
     final class Resolved implements IdentifierPath {
         private final CharSequence resolution;
@@ -54,6 +71,8 @@ interface IdentifierPath extends UnboundCharSequence {
 
         @Getter
         private final String fieldName;
+
+        private final String table;
 
         @Override
         public int length() {
@@ -73,7 +92,8 @@ interface IdentifierPath extends UnboundCharSequence {
 
         @Override
         public CharSequence resolveInstance(CharSequence inst,
-                                            boolean withoutInstance) {
+                                            boolean withoutInstance,
+                                            Map<String, CharSequence> secondaryResolver) {
             if (inst instanceof ParameterRef)
                 throw TranslationError.CANNOT_DEREFERENCE_PARAMETERS.getError(((ParameterRef) inst).getValue(),
                         resolution);
@@ -81,8 +101,11 @@ interface IdentifierPath extends UnboundCharSequence {
                 return this;
             if (inst instanceof IdentifierPath)
                 return ((IdentifierPath) inst).resolve(this, withoutInstance);
+
+            inst = IdentifierPath.resolveInstance(inst, table, secondaryResolver);
+
             StringBuilder seq = withoutInstance ? new StringBuilder() : new StringBuilder(inst).append(DOT);
-            return new Resolved(seq.append(resolution).toString(), declaringClass, fieldName);
+            return new Resolved(seq.append(resolution).toString(), declaringClass, fieldName, table);
         }
 
         @Override
@@ -107,6 +130,7 @@ interface IdentifierPath extends UnboundCharSequence {
     abstract class AssociativeIdentifierPath implements IdentifierPath {
 
         private final String fieldName;
+        private final String table;
         private CharSequence instance;
 
         private RuntimeException error() {
@@ -147,10 +171,12 @@ interface IdentifierPath extends UnboundCharSequence {
 
         @Override
         public CharSequence resolveInstance(CharSequence inst,
-                                            boolean withoutInstance) {
+                                            boolean withoutInstance,
+                                            Map<String, CharSequence> secondaryResolver) {
             if (this.instance != null)
                 new IllegalStateException("Already initialized with '" + this.instance + "' instance. Passing a new '"
                         + inst + "' is illegal");
+            inst = IdentifierPath.resolveInstance(inst, table, secondaryResolver);
             this.instance = inst;
             return this;
         }
@@ -161,8 +187,8 @@ interface IdentifierPath extends UnboundCharSequence {
         private final Function<Class<?>, JPAHelpers.Association> associationSupplier;
 
         public MultiColumnIdentifierPath(String originalField,
-                Function<Class<?>, JPAHelpers.Association> associationSupplier) {
-            super(originalField);
+                Function<Class<?>, JPAHelpers.Association> associationSupplier, String table) {
+            super(originalField, table);
             this.associationSupplier = associationSupplier;
         }
 
@@ -180,7 +206,7 @@ interface IdentifierPath extends UnboundCharSequence {
                     StringBuilder inst = withoutInstance ? new StringBuilder()
                             : new StringBuilder(getInstance()).append(DOT);
                     return new Resolved(inst.append(association.getLeft().get(i)), path.getDeclaringClass(),
-                            path.getFieldName());
+                            path.getFieldName(), getTable());
                 }
             }
             throw new IllegalArgumentException("Column '" + key + "' not found in PK: " + referenced);
@@ -191,8 +217,8 @@ interface IdentifierPath extends UnboundCharSequence {
 
         private final Map<String, String> overrides;
 
-        public ColumnOverridingIdentifierPath(Map<String, String> overrides) {
-            super(null);
+        public ColumnOverridingIdentifierPath(Map<String, String> overrides, String table) {
+            super(null, table);
             this.overrides = overrides;
         }
 
@@ -227,7 +253,7 @@ interface IdentifierPath extends UnboundCharSequence {
             CharSequence column = override != null ? override : path.current();
 
             StringBuilder inst = withoutInstance ? new StringBuilder() : new StringBuilder(getInstance()).append(DOT);
-            return new Resolved(inst.append(column), path.getDeclaringClass(), key);
+            return new Resolved(inst.append(column), path.getDeclaringClass(), key, getTable());
         }
     }
 }

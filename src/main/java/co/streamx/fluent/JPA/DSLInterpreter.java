@@ -100,7 +100,8 @@ final class DSLInterpreter
     private SubQueryManager subQueries_ = new SubQueryManager(Collections.emptyList());
     // PRIMARY value - primary, empty string - the only secondary, otherwise - named secondary
     private static final String PRIMARY = new String("PRIMARY");
-    private Map<CharSequence, String> tableRefs = new HashMap<>();
+    private final Map<CharSequence, String> tableRefs = new HashMap<>();
+    private Map<CharSequence, Map<String, CharSequence>> tableSecondaryRefs = Collections.emptyMap();
     private Map<CharSequence, CharSequence> aliases_ = Collections.emptyMap();
     private CharSequence subQueryAlias;
     private List<CharSequence> undeclaredAliases = Collections.emptyList();
@@ -111,13 +112,13 @@ final class DSLInterpreter
     private Map<CharSequence, Member> joinTablesForFROM = Collections.emptyMap();
     private Map<ParameterExpression, Member> collectionTables = Collections.emptyMap();
     private Map<CharSequence, Member> collectionTablesForFROM = Collections.emptyMap();
-    private Map<ParameterExpression, ParameterExpression> parameterBackwardMap = new HashMap<>();
+    private final Map<ParameterExpression, ParameterExpression> parameterBackwardMap = new HashMap<>();
 
     // View
     private Map<CharSequence, View> views = Collections.emptyMap();
 
     @Getter
-    private List<Object> indexedParameters = new ArrayList<>();
+    private final List<Object> indexedParameters = new ArrayList<>();
 
     private ParameterContext renderingContext = ParameterContext.EXPRESSION;
     private Optional<Boolean> collectingParameters = OPTIONAL_FALSE;
@@ -648,7 +649,9 @@ final class DSLInterpreter
                     } else {
                         secondary = "";
                     }
-                    return registerTableReference(instanceArguments.get(0), secondary);
+                    CharSequence secondaryAlias = registerTableReference(instanceArguments.get(0), secondary);
+                    registerSecondaryTable(pp.get(0), secondary, secondaryAlias);
+                    return secondaryAlias;
                 };
             }
 
@@ -771,7 +774,9 @@ final class DSLInterpreter
 
                             return new IdentifierPath.MultiColumnIdentifierPath(m.getName(),
                                     clazz -> getAssociationMTM(member,
-                                            !member.getDeclaringClass().isAssignableFrom(clazz))).resolveInstance(lseq);
+                                            !member.getDeclaringClass().isAssignableFrom(clazz)),
+                                    null).resolveInstance(lseq,
+                                                    tableSecondaryRefs.get(lseq));
                         };
                     }
 
@@ -784,15 +789,17 @@ final class DSLInterpreter
 
                         if (tableColProperty.owner()) {
                             return pp -> new IdentifierPath.MultiColumnIdentifierPath(m.getName(),
-                                    c -> getAssociationElementCollection(member)).resolveInstance(lseq);
+                                    c -> getAssociationElementCollection(member), null).resolveInstance(lseq,
+                                            tableSecondaryRefs.get(lseq));
                         } else {
                             return pp -> {
 
                                 Class<?> target = getTargetForEC(member);
                                 if (!isEmbeddable(target))
-                                    return getColumnNameFromProperty(member).resolveInstance(lseq);
+                                    return getColumnNameFromProperty(member).resolveInstance(lseq,
+                                            tableSecondaryRefs.get(lseq));
 
-                                return calcOverrides(lseq, member);
+                                return calcOverrides(lseq, member, tableSecondaryRefs.get(lseq));
                             };
                         }
                     }
@@ -969,17 +976,18 @@ final class DSLInterpreter
 
                     if (isEmbeddable(m.getReturnType()) || isCollection(m.getReturnType()) || isEmbedded(m))
                         // embedded
-                        return calcOverrides(out, (Member) m);
+                        return calcOverrides(out, (Member) m, tableSecondaryRefs.get(out));
 
                     IdentifierPath columnName = getColumnNameFromProperty(m);
 
                     if (m.getParameterCount() > 0) // assignment
-                        return new StringBuilder(columnName.resolveInstance(instFinal, true))
-                                .append(KEYWORD_DELIMITER + EQUAL_SIGN + KEYWORD_DELIMITER)
-                                .append(pp.get(0));
+                        return new StringBuilder(
+                                columnName.resolveInstance(instFinal, true, tableSecondaryRefs.get(instFinal)))
+                                        .append(KEYWORD_DELIMITER + EQUAL_SIGN + KEYWORD_DELIMITER)
+                                        .append(pp.get(0));
 
                     if (instFinal != null) {
-                        return columnName.resolveInstance(instFinal);
+                        return columnName.resolveInstance(instFinal, tableSecondaryRefs.get(instFinal));
                     }
 
                     out.append(columnName);
@@ -1192,13 +1200,22 @@ final class DSLInterpreter
         };
     }
 
+    private void registerSecondaryTable(CharSequence primaryAlias,
+                                        String secondary,
+                                        CharSequence secondaryAlias) {
+        if (tableSecondaryRefs.isEmpty())
+            tableSecondaryRefs = new HashMap<>();
+
+        tableSecondaryRefs.computeIfAbsent(primaryAlias, x -> new HashMap<>()).put(secondary, secondaryAlias);
+    }
+
     private CharSequence registerTableReference(Expression e,
                                                 String secondary) {
         Class<?> resultType = e.getResultType();
         if (!isEntityLike(resultType))
             throw TranslationError.CANNOT_CALCULATE_TABLE_REFERENCE.getError(resultType);
         CharSequence tableRef = calcOverrides(
-                new StringBuilder(TABLE_ALIAS_PREFIX).append(parameterCounter++), resultType);
+                new StringBuilder(TABLE_ALIAS_PREFIX).append(parameterCounter++), resultType, null);
         tableRefs.put(tableRef, secondary);
         return registerJoinTable(tableRef, e);
     }

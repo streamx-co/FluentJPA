@@ -221,20 +221,23 @@ final class JPAHelpers {
     }
 
     public static CharSequence calcOverrides(CharSequence instance,
-                                             Member field) {
+                                             Member field,
+                                             Map<String, CharSequence> secondaryResolver) {
         field = getAnnotatedField(field);
         AnnotatedElement annotated = (AnnotatedElement) field;
 
-        return calcOverrides(instance, annotated);
+        return calcOverrides(instance, annotated, secondaryResolver);
     }
 
     public static CharSequence calcOverrides(CharSequence instance,
-                                             AnnotatedElement annotated) {
+                                             AnnotatedElement annotated,
+                                             Map<String, CharSequence> secondaryResolver) {
         Map<String, String> overrides = calcOverrides(annotated);
         if (overrides.isEmpty())
             return instance;
 
-        return new IdentifierPath.ColumnOverridingIdentifierPath(overrides).resolveInstance(instance);
+        return new IdentifierPath.ColumnOverridingIdentifierPath(overrides, null).resolveInstance(instance,
+                secondaryResolver);
     }
 
     // TODO: overrides for MappedClass objects
@@ -671,21 +674,26 @@ final class JPAHelpers {
     private static IdentifierPath getColumnName(Member field) {
         Column column = ((AnnotatedElement) field).getAnnotation(Column.class);
         if (column != null) {
-            String cname = column.name();
-            if (!Strings.isNullOrEmpty(cname))
-                return new IdentifierPath.Resolved(cname, field.getDeclaringClass(), field.getName());
+            CharSequence cname = column.name();
+            if (Strings.isNullOrEmpty(cname))
+                cname = toDBNotation(getFieldName(field));
+
+            return new IdentifierPath.Resolved(cname, field.getDeclaringClass(), field.getName(), column.table());
         }
 
         JoinColumn join = ((AnnotatedElement) field).getAnnotation(JoinColumn.class);
         if (join != null) {
-            String cname = join.name();
-            if (!Strings.isNullOrEmpty(cname))
-                return new IdentifierPath.Resolved(cname, field.getDeclaringClass(), field.getName());
+            CharSequence cname = join.name();
+            if (Strings.isNullOrEmpty(cname))
+                cname = toDBNotation(getFieldName(field));
+
+            return new IdentifierPath.Resolved(cname, field.getDeclaringClass(), field.getName(), join.table());
         }
 
         JoinColumns joins = ((AnnotatedElement) field).getAnnotation(JoinColumns.class);
         if (joins != null)
-            return new IdentifierPath.MultiColumnIdentifierPath(field.getName(), c -> getAssociation(field, true));
+            return new IdentifierPath.MultiColumnIdentifierPath(field.getName(), c -> getAssociation(field, true),
+                    joins.value()[0].table());
 
         MapsId mapsId = ((AnnotatedElement) field).getAnnotation(MapsId.class);
         if (mapsId != null) {
@@ -697,18 +705,19 @@ final class JPAHelpers {
                 // should be the sole PK column
                 return entityIds.size() == 1
                         ? new IdentifierPath.Resolved(entityIds.get(0).getColumn(), field.getDeclaringClass(),
-                                field.getName())
+                                field.getName(), null)
                         : // if this case is possible, we are covered
-                        new IdentifierPath.MultiColumnIdentifierPath(field.getName(), c -> getAssociation(field, true));
+                        new IdentifierPath.MultiColumnIdentifierPath(field.getName(), c -> getAssociation(field, true),
+                                null);
             }
 
             return new IdentifierPath.Resolved(
                     entityIds.stream().filter(id -> isIDMapped(id, idPath)).findFirst().get().getColumn(),
-                    field.getDeclaringClass(), field.getName());
+                    field.getDeclaringClass(), field.getName(), null);
         }
 
         return new IdentifierPath.Resolved(toDBNotation(getFieldName(field)), field.getDeclaringClass(),
-                field.getName());
+                field.getName(), null);
     }
 
     public static ClassMeta getClassMeta(Class<?> declaringClass) {

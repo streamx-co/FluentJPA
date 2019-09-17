@@ -22,7 +22,7 @@ public class SecondaryTableTest implements CommonTest, JPAAnnotationTestTypes {
 
             User u1 = secondaryTable(u);
 
-            SELECT(u, u1.getName());
+            SELECT(u, u.getName());
             FROM(u).JOIN(u1).ON(u == u1);
         });
 
