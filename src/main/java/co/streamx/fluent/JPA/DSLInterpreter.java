@@ -267,6 +267,10 @@ final class DSLInterpreter
             };
         }
         return eargs -> {
+            if (value instanceof Object[] && ((Object[]) value).length == 0)
+                return t -> new PackedInitializers(Collections.emptyList(), Collections.emptyList(),
+                        Collections.emptyList(), this);
+
             if (!(value instanceof Keyword) && collectingParameters.orElse(false))
                 return args -> registerParameter(value);
 

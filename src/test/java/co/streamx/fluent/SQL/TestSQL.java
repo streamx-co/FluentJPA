@@ -6,8 +6,10 @@ import static co.streamx.fluent.SQL.AggregateFunctions.MIN;
 import static co.streamx.fluent.SQL.AggregateFunctions.SUM;
 import static co.streamx.fluent.SQL.Directives.aggregateBy;
 import static co.streamx.fluent.SQL.Directives.alias;
+import static co.streamx.fluent.SQL.Directives.parameter;
 import static co.streamx.fluent.SQL.Directives.recurseOn;
 import static co.streamx.fluent.SQL.Directives.subQuery;
+import static co.streamx.fluent.SQL.Directives.varargs;
 import static co.streamx.fluent.SQL.Directives.viewOf;
 import static co.streamx.fluent.SQL.MySQL.SQL.ON_DUPLICATE_KEY_UPDATE;
 import static co.streamx.fluent.SQL.Operators.IN;
@@ -46,6 +48,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
@@ -72,6 +75,7 @@ import co.streamx.fluent.extree.expression.Expression;
 import co.streamx.fluent.extree.expression.LambdaExpression;
 import co.streamx.fluent.functions.Consumer2;
 import co.streamx.fluent.functions.Consumer3;
+import co.streamx.fluent.functions.Function0;
 import co.streamx.fluent.functions.Function1;
 import co.streamx.fluent.notation.Capability;
 import co.streamx.fluent.notation.Tuple;
@@ -510,6 +514,57 @@ public class TestSQL implements CommonTest {
         String expected = "SELECT t0.* FROM  (VALUES (1, 'one'), (2, 'two') ) AS t0 (number, letter)";
 
         assertQuery(query, expected);
+    }
+
+    @Test
+    public void testQueriesValues2() throws Exception {
+        FluentQuery query = FluentJPA.SQL(() -> {
+
+            Comparable<?>[] y = varargs(row(5, "five"));
+            Comparable<?>[] x = varargs(row(2, "two"), y);
+            NumberLetter numLetter = (NumberLetter) VALUES(varargs(row(1, "one"), x));
+
+            SELECT(numLetter);
+            FROM(viewOf(numLetter, NumberLetter::getNumber, NumberLetter::getLetter));
+        });
+
+        String expected = "SELECT t0.* "
+                + "FROM  (VALUES  (1, 'one'),  (2, 'two'),  (5, 'five')    ) AS t0 (number, letter)";
+
+        assertQuery(query, expected);
+    }
+
+    @Test
+    public void testQueriesValues3() throws Exception {
+
+        String[] args = { "John", "Dave", "Michael" };
+        Function0<Record2<Integer, String>[]> arguments = buildArgs(Arrays.asList(args));
+
+        FluentQuery query = FluentJPA.SQL(() -> {
+
+            NumberLetter numLetter = (NumberLetter) VALUES(arguments.get());
+
+            SELECT(numLetter);
+            FROM(viewOf(numLetter, NumberLetter::getNumber, NumberLetter::getLetter));
+        });
+
+        String expected = "SELECT t0.* " + "FROM  (VALUES  (2, ?1),  (1, ?2),  (0, ?3)    ) AS t0 (t1, t2)";
+
+        assertQuery(query, expected, reverse(args));
+    }
+
+    private Function0<Record2<Integer, String>[]> buildArgs(List<String> likes) {
+
+        Function0<Record2<Integer, String>[]> args = Function0.emptyArray();
+
+        int x = 0;
+        for (String like : likes) {
+            Function0<Record2<Integer, String>[]> arg = args;
+            int y = x++;
+            args = () -> varargs(row(y, parameter(like)), arg.get());
+        }
+
+        return args;
     }
 
     @Data
