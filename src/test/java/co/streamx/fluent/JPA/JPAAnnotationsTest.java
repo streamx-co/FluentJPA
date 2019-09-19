@@ -1,7 +1,6 @@
 package co.streamx.fluent.JPA;
 
 import static co.streamx.fluent.SQL.Directives.alias;
-import static co.streamx.fluent.SQL.Directives.secondaryTable;
 import static co.streamx.fluent.SQL.PostgreSQL.SQL.LENGTH;
 import static co.streamx.fluent.SQL.PostgreSQL.SQL.registerVendorCapabilities;
 import static co.streamx.fluent.SQL.SQL.FROM;
@@ -22,6 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import co.streamx.fluent.JPA.repository.entities.jpa.EmployeeEnumerated;
 import co.streamx.fluent.SQL.DataType;
+import co.streamx.fluent.SQL.ExtensionTable;
 import co.streamx.fluent.SQL.PostgreSQL.DataTypeNames;
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
@@ -155,12 +155,13 @@ public class JPAAnnotationsTest extends IntegrationTest implements JPAAnnotation
 
         em.clear();
 
-        FluentQuery query = FluentJPA.SQL((User uu) -> {
+        FluentQuery query = FluentJPA.SQL((User uu,
+                                           ExtensionTable<User> userEx) -> {
 
-            User uSec = secondaryTable(uu);
+            boolean condition = userEx.join(uu);
 
-            SELECT(uu, uSec.getName());
-            FROM(uu).JOIN(uSec).ON(uu == uSec);
+            SELECT(uu, uu.getName());
+            FROM(uu).JOIN(userEx).ON(condition);
         });
 
         List<User> users = query.createQuery(em, User.class).getResultList();

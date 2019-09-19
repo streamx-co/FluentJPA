@@ -129,16 +129,14 @@ final class JPAHelpers {
     private static final Map<Class<?>, ClassMeta> ids = new ConcurrentHashMap<>();
 
     public static Association getAssociation(Class<?> entity,
-                                             String secondary,
-                                             boolean left) {
+                                             SecondaryTable table) {
 
-        SecondaryTable table = getSecondaryTableAnnotation(entity, secondary);
         PrimaryKeyJoinColumn[] pkCols = table.pkJoinColumns();
 
         List<ID> typeIds = getClassMeta(entity).getIds();
         if (pkCols.length == 0) {
             List<CharSequence> columns = Streams.map(typeIds, ID::getColumn);
-            return new Association(columns, columns, left);
+            return new Association(columns, columns, true);
         }
 
         List<CharSequence> other = new ArrayList<>();
@@ -162,7 +160,7 @@ final class JPAHelpers {
 
         }
 
-        return new Association(that, other, left);
+        return new Association(that, other, true);
     }
 
     public static Association getAssociation(Expression left,
@@ -579,7 +577,7 @@ final class JPAHelpers {
             throw TranslationError.SECONDARY_TABLE_NOT_FOUND.getError(entity, secondary);
         SecondaryTable tableA = entity.getAnnotation(SecondaryTable.class);
         if (tableA != null) {
-            if (secondary.isEmpty() || secondary.equalsIgnoreCase(tableA.name()))
+            if (Strings.isNullOrEmpty(secondary) || secondary.equalsIgnoreCase(tableA.name()))
                 return tableA;
 
             throw TranslationError.SECONDARY_TABLE_NOT_FOUND.getError(entity, secondary);
@@ -603,17 +601,16 @@ final class JPAHelpers {
         return getSecondaryTableAnnotation(entity.getSuperclass(), secondary);
     }
 
-    public static String getTableName(Class<?> entity) {
-        return getTableName(entity, null);
+    public static SecondaryTable getSecondaryTableName(Class<?> entity,
+                                               String secondary) {
+        return getSecondaryTableAnnotation(entity, secondary);
     }
 
-    public static String getTableName(Class<?> entity,
-                                      String secondary) {
-        if (secondary != null) {
-            SecondaryTable secondaryTable = getSecondaryTableAnnotation(entity, secondary);
-            return buildFullTableName(secondaryTable.catalog(), secondaryTable.schema(), secondaryTable.name());
-        }
+    public static String getTableName(SecondaryTable secondaryTable) {
+        return buildFullTableName(secondaryTable.catalog(), secondaryTable.schema(), secondaryTable.name());
+    }
 
+    public static String getTableName(Class<?> entity) {
         if (!isEntityLike(entity))
             return null;
         Table tableA = getTableAnnotation(entity);
