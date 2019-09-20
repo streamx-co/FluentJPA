@@ -19,6 +19,7 @@ enum TranslationError {
     ALIAS_NOT_SPECIFIED("Alias not specified for index: {0}"),
     SECONDARY_TABLE_NOT_FOUND("Cannot find secondary table {1} declared on {0} entity"),
     SECONDARY_TABLE_NOT_CONSTANT("Secondary table name must be a constant. ({0})"),
+    INHERITANCE_STRATEGY_NOT_FOUND("Inheritance strategy not found on {0} entity"),
     UNMAPPED_FIELD(
             "Cannot translate property: {0}. FluentJPA methods must be either static, interface default or annotated with @Local") {
         @Override

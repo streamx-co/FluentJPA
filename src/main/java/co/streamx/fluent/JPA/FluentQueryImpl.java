@@ -54,7 +54,7 @@ private static final String HIBERNATE5_RESULT_TRANSFORMER_INSTALLER = "co.stream
         DSLInterpreter dsl = new DSLInterpreter(FluentJPA.getCapabilities());
         Function<List<Expression>, Function<List<CharSequence>, CharSequence>> fvisited = dsl.visit(expression);
         Function<List<CharSequence>, CharSequence> visited = fvisited.apply(Collections.emptyList());
-        qlString = visited.apply(Collections.emptyList()).toString().trim();
+        qlString = visited.apply(Collections.emptyList()).toString();
         parameters = Collections.unmodifiableList(dsl.getIndexedParameters());
     }
 

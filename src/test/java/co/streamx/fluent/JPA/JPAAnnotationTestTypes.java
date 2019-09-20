@@ -19,6 +19,7 @@ import javax.persistence.PrimaryKeyJoinColumn;
 import javax.persistence.SecondaryTable;
 import javax.persistence.Table;
 
+import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -72,5 +73,45 @@ public interface JPAAnnotationTestTypes {
             return true;
         }
 
+    }
+
+    @Table(name = "EMP", schema = "TPC")
+    @Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
+    @Tuple
+    @Data
+    public class Employee {
+        @Id
+        @GeneratedValue
+        private long id;
+        private String name;
+    }
+
+    @Tuple
+    @Table(name = "FULL_TIME_EMP", schema = "TPC")
+    @Data
+    @EqualsAndHashCode(callSuper = true)
+    public class FullTimeEmployee extends Employee {
+        private int salary;
+    }
+
+    @Inheritance(strategy = InheritanceType.JOINED)
+    @Tuple
+    @Data
+    @DiscriminatorColumn(name = "EMP_TYPE")
+    @Table(name = "EMP")
+    public class Employee1 {
+        @Id
+        @GeneratedValue
+        private long id;
+        private String name;
+    }
+
+    @Tuple
+    @Table(name = "FULL_TIME_EMP", schema = "JN")
+    @Data
+    @EqualsAndHashCode(callSuper = true)
+    @DiscriminatorValue("F")
+    public class FullTimeEmployee1 extends Employee1 {
+        private int salary;
     }
 }

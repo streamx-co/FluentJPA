@@ -112,9 +112,7 @@ public class GrammarTest implements CommonTest {
 
         String expected = "SELECT myseq. NEXTVAL  , static. NEXTVAL   " + "FROM DUAL";
 
-        String sql = query.toString();
-        System.out.println(sql);
-        assertEquals(expected, sql.replace("\n", ""));
+        assertQuery(query, expected);
     }
 
     @Test
@@ -192,9 +190,7 @@ public class GrammarTest implements CommonTest {
                 + "FROM (SELECT CAST('2001-10-09' AS VARCHAR(4000)) ) AS q1 "
                 + "FROM (SELECT CAST('2001-10-10' AS VARCHAR(4000)) ) AS q2";
 
-        String sql = query.toString();
-        System.out.println(sql);
-        assertEquals(expected, sql.replace("\n", ""));
+        assertQuery(query, expected);
     }
 
     @Test

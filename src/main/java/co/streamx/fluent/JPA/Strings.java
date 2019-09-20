@@ -65,4 +65,17 @@ interface Strings {
         }
         return -1;
     }
+
+    static CharSequence trim(CharSequence source) {
+        int len = source.length();
+        if (len == 0)
+            return source;
+        int start = 0;
+        while (start < len && (source.charAt(start) <= ' '))
+            start++;
+        while (len > start && (source.charAt(--len) <= ' '))
+            ;
+
+        return source.subSequence(start, ++len);
+    }
 }

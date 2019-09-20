@@ -30,6 +30,7 @@ import javax.persistence.Embedded;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
 import javax.persistence.Id;
+import javax.persistence.Inheritance;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinColumns;
 import javax.persistence.JoinTable;
@@ -560,15 +561,28 @@ final class JPAHelpers {
         return name;
     }
 
-    private static Table getTableAnnotation(Class<?> entity) {
-        Table tableA = entity.getAnnotation(Table.class);
+    private static <T extends Annotation> T getAnnotationRecursive(Class<?> entity,
+                                                                   Class<T> annotation) {
+        T tableA = entity.getAnnotation(annotation);
         if (tableA != null)
             return tableA;
 
         entity = entity.getSuperclass();
         if (!isEntityLike(entity))
             return null;
-        return getTableAnnotation(entity);
+        return getAnnotationRecursive(entity, annotation);
+    }
+
+    private static <T extends Annotation> Class<?> getAnnotatedTypeRecursive(Class<?> entity,
+                                                                             Class<T> annotation) {
+        T tableA = entity.getAnnotation(annotation);
+        if (tableA != null)
+            return entity;
+
+        entity = entity.getSuperclass();
+        if (!isEntityLike(entity))
+            return null;
+        return getAnnotatedTypeRecursive(entity, annotation);
     }
 
     private static SecondaryTable getSecondaryTableAnnotation(Class<?> entity,
@@ -601,7 +615,14 @@ final class JPAHelpers {
         return getSecondaryTableAnnotation(entity.getSuperclass(), secondary);
     }
 
-    public static SecondaryTable getSecondaryTableName(Class<?> entity,
+    public static Class<?> getInheritanceBaseType(Class<?> entity) {
+        Class<?> type = getAnnotatedTypeRecursive(entity, Inheritance.class);
+        if (type == null)
+            throw TranslationError.INHERITANCE_STRATEGY_NOT_FOUND.getError(entity);
+        return type;
+    }
+
+    public static SecondaryTable getSecondaryTable(Class<?> entity,
                                                String secondary) {
         return getSecondaryTableAnnotation(entity, secondary);
     }
@@ -613,7 +634,7 @@ final class JPAHelpers {
     public static String getTableName(Class<?> entity) {
         if (!isEntityLike(entity))
             return null;
-        Table tableA = getTableAnnotation(entity);
+        Table tableA = getAnnotationRecursive(entity, Table.class);
         String name;
 
         if (tableA != null) {

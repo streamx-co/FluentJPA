@@ -6,8 +6,9 @@ import static co.streamx.fluent.JPA.JPAHelpers.getAssociationElementCollection;
 import static co.streamx.fluent.JPA.JPAHelpers.getAssociationMTM;
 import static co.streamx.fluent.JPA.JPAHelpers.getColumnNameFromProperty;
 import static co.streamx.fluent.JPA.JPAHelpers.getECTableName;
+import static co.streamx.fluent.JPA.JPAHelpers.getInheritanceBaseType;
 import static co.streamx.fluent.JPA.JPAHelpers.getJoinTableName;
-import static co.streamx.fluent.JPA.JPAHelpers.getSecondaryTableName;
+import static co.streamx.fluent.JPA.JPAHelpers.getSecondaryTable;
 import static co.streamx.fluent.JPA.JPAHelpers.getTableName;
 import static co.streamx.fluent.JPA.JPAHelpers.getTargetForEC;
 import static co.streamx.fluent.JPA.JPAHelpers.isCollection;
@@ -66,6 +67,7 @@ import co.streamx.fluent.notation.SubQuery;
 import co.streamx.fluent.notation.TableCollection;
 import co.streamx.fluent.notation.TableCollection.Property;
 import co.streamx.fluent.notation.TableExtension;
+import co.streamx.fluent.notation.TableExtensionType;
 import co.streamx.fluent.notation.TableJoin;
 import co.streamx.fluent.notation.ViewDeclaration;
 import lombok.Getter;
@@ -776,7 +778,8 @@ final class DSLInterpreter
                         }
                     }
 
-                    if (m.isAnnotationPresent(TableExtension.class)) {
+                    TableExtension tableExtension = m.getAnnotation(TableExtension.class);
+                    if (tableExtension != null) {
                         return pp -> {
                             String secondary;
 
@@ -789,15 +792,27 @@ final class DSLInterpreter
                                 secondary = null;
                             }
 
-                            Class<?> entityType = instanceArguments.get(0).getResultType();
-                            SecondaryTable secondaryTable = getSecondaryTableName(
-                                    entityType, secondary);
-                            tableRefs.put(originalInst, getTableName(secondaryTable));
-
+                            Expression instExpression = instanceArguments.get(0);
+                            Class<?> entityType = instExpression.getResultType();
                             CharSequence primary = pp.get(0);
-                            registerSecondaryTable(primary, secondaryTable.name(), originalInst);
+                            Association assoc;
 
-                            Association assoc = getAssociation(entityType, secondaryTable);
+                            if (tableExtension.value() == TableExtensionType.INHERITANCE) {
+                                Class<?> base = getInheritanceBaseType(entityType);
+                                tableRefs.put(originalInst, getTableName(base));
+
+                                registerSecondaryTable(primary, base.getName(), originalInst);
+
+                                assoc = getAssociation(instExpression, instExpression);
+
+                            } else {
+                                SecondaryTable secondaryTable = getSecondaryTable(entityType, secondary);
+                                tableRefs.put(originalInst, getTableName(secondaryTable));
+
+                                registerSecondaryTable(primary, secondaryTable.name(), originalInst);
+
+                                assoc = getAssociation(entityType, secondaryTable);
+                            }
 
                             return renderAssociation(new StringBuilder(), assoc, aliases, originalInst, primary);
                         };
@@ -1270,11 +1285,11 @@ final class DSLInterpreter
                 ParameterContext previousRenderingContext = this.renderingContext;
                 renderingContext = ParameterContext.EXPRESSION;
                 try {
-                    return pe.apply(t);
+                    return Strings.trim(pe.apply(t));
                 } finally {
                     renderingContext = previousRenderingContext;
                 }
-            }).collect(Collectors.joining(NEW_LINE));
+            }).filter(seq -> seq.length() > 0).collect(Collectors.joining(NEW_LINE));
         };
     }
 

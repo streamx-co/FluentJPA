@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import co.streamx.fluent.JPA.repository.entities.jpa.EmployeeEnumerated;
 import co.streamx.fluent.SQL.DataType;
-import co.streamx.fluent.SQL.ExtensionTable;
+import co.streamx.fluent.SQL.PartialTable;
 import co.streamx.fluent.SQL.PostgreSQL.DataTypeNames;
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
@@ -156,9 +156,9 @@ public class JPAAnnotationsTest extends IntegrationTest implements JPAAnnotation
         em.clear();
 
         FluentQuery query = FluentJPA.SQL((User uu,
-                                           ExtensionTable<User> userEx) -> {
+                                           PartialTable<User> userEx) -> {
 
-            boolean condition = userEx.join(uu);
+            boolean condition = userEx.secondary(uu);
 
             SELECT(uu, uu.getName());
             FROM(uu).JOIN(userEx).ON(condition);

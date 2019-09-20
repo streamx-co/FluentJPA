@@ -49,8 +49,11 @@ interface IdentifierPath extends UnboundCharSequence {
 
     static CharSequence resolveInstance(CharSequence inst,
                                         String table,
+                                        Class<?> declaringClass,
                                         Map<String, CharSequence> secondaryResolver) {
-        if (!Strings.isNullOrEmpty(table) && secondaryResolver != null) {
+        if (secondaryResolver != null) {
+            if (Strings.isNullOrEmpty(table))
+                table = declaringClass.getName();
             CharSequence inst1 = secondaryResolver.get(table);
             if (inst1 == null)
                 inst1 = secondaryResolver.get("");
@@ -102,7 +105,7 @@ interface IdentifierPath extends UnboundCharSequence {
             if (inst instanceof IdentifierPath)
                 return ((IdentifierPath) inst).resolve(this, withoutInstance);
 
-            inst = IdentifierPath.resolveInstance(inst, table, secondaryResolver);
+            inst = IdentifierPath.resolveInstance(inst, table, declaringClass, secondaryResolver);
 
             StringBuilder seq = withoutInstance ? new StringBuilder() : new StringBuilder(inst).append(DOT);
             return new Resolved(seq.append(resolution).toString(), declaringClass, fieldName, table);
@@ -176,7 +179,7 @@ interface IdentifierPath extends UnboundCharSequence {
             if (this.instance != null)
                 new IllegalStateException("Already initialized with '" + this.instance + "' instance. Passing a new '"
                         + inst + "' is illegal");
-            inst = IdentifierPath.resolveInstance(inst, table, secondaryResolver);
+            inst = IdentifierPath.resolveInstance(inst, table, Void.class, secondaryResolver);
             this.instance = inst;
             return this;
         }

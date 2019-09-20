@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import co.streamx.fluent.SQL.ExtensionTable;
+import co.streamx.fluent.SQL.PartialTable;
 
 public class SecondaryTableTest implements CommonTest, JPAAnnotationTestTypes {
     @BeforeAll
@@ -20,9 +20,9 @@ public class SecondaryTableTest implements CommonTest, JPAAnnotationTestTypes {
     public void testSecTable1() {
 
         FluentQuery query = FluentJPA.SQL((User u,
-                                           ExtensionTable<User> userEx) -> {
+                                           PartialTable<User> userEx) -> {
 
-            boolean condition = userEx.join(u);
+            boolean condition = userEx.secondary(u);
 
             SELECT(u, u.getName());
             FROM(u).JOIN(userEx).ON(condition);
@@ -39,9 +39,9 @@ public class SecondaryTableTest implements CommonTest, JPAAnnotationTestTypes {
     public void testSecTable2() {
 
         FluentQuery query = FluentJPA.SQL((User u,
-                                           ExtensionTable<User> userEx) -> {
+                                           PartialTable<User> userEx) -> {
 
-            boolean condition = userEx.join(u, "users");
+            boolean condition = userEx.secondary(u, "users");
 
             SELECT(u, u.getName());
             FROM(u).JOIN(userEx).ON(condition);
@@ -60,13 +60,49 @@ public class SecondaryTableTest implements CommonTest, JPAAnnotationTestTypes {
         Assertions.assertThrows(IllegalStateException.class, () -> {
 
             FluentJPA.SQL((User u,
-                           ExtensionTable<User> userEx) -> {
+                           PartialTable<User> userEx) -> {
 
-                boolean condition = userEx.join(u, "users1");
+                boolean condition = userEx.secondary(u, "users1");
 
                 SELECT(u, u.getName());
                 FROM(u).JOIN(userEx).ON(condition);
             });
         });
+    }
+
+    @Test
+    public void testTPC() {
+
+        FluentQuery query = FluentJPA.SQL((FullTimeEmployee e) -> {
+
+            SELECT(e.getName(), e.getSalary());
+            FROM(e);
+        });
+
+        // @formatter:off
+        String expected = "SELECT t0.name, t0.salary\r\n" + 
+                "FROM TPC.FULL_TIME_EMP AS t0";
+        // @formatter:on
+
+        assertQuery(query, expected);
+    }
+
+    @Test
+    public void testInheritJoin1() {
+
+        FluentQuery query = FluentJPA.SQL((FullTimeEmployee1 e,
+                                           PartialTable<Employee1> empEx) -> {
+
+            boolean condition = empEx.joined(e);
+
+            SELECT(empEx, e.getName(), e.getSalary());
+            FROM(e).JOIN(empEx).ON(condition);
+        });
+
+        // @formatter:off
+        String expected = "SELECT t1.*, t1.name, t0.salary\r\n" + 
+                "FROM JN.FULL_TIME_EMP AS t0  INNER JOIN EMP AS t1  ON (t1.id = t0.id)";
+        // @formatter:on
+        assertQuery(query, expected);
     }
 }
