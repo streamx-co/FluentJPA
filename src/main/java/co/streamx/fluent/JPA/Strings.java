@@ -67,6 +67,8 @@ interface Strings {
     }
 
     static CharSequence trim(CharSequence source) {
+        if (source == null)
+            return source;
         int len = source.length();
         if (len == 0)
             return source;

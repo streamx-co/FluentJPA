@@ -6,6 +6,7 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -414,5 +415,11 @@ interface DSLInterpreterHelpers {
         }
 
         return e;
+    }
+
+    default CharSequence getAliased(CharSequence seq,
+                                    Map<CharSequence, CharSequence> aliases) {
+        CharSequence label = aliases.get(seq);
+        return label != null ? label : seq;
     }
 }

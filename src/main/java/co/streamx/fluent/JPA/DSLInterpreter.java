@@ -35,6 +35,10 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import javax.persistence.DiscriminatorColumn;
+import javax.persistence.DiscriminatorType;
+import javax.persistence.DiscriminatorValue;
+import javax.persistence.Entity;
 import javax.persistence.SecondaryTable;
 
 import co.streamx.fluent.JPA.JPAHelpers.Association;
@@ -60,6 +64,7 @@ import co.streamx.fluent.notation.CommonTableExpressionType;
 import co.streamx.fluent.notation.Context;
 import co.streamx.fluent.notation.Keyword;
 import co.streamx.fluent.notation.Literal;
+import co.streamx.fluent.notation.NoOp;
 import co.streamx.fluent.notation.Operator;
 import co.streamx.fluent.notation.Parameter;
 import co.streamx.fluent.notation.ParameterContext;
@@ -79,6 +84,7 @@ final class DSLInterpreter
         implements ExpressionVisitor<Function<List<Expression>, Function<List<CharSequence>, CharSequence>>>,
         DSLInterpreterHelpers {
 
+    private static final String DTYPE = "DTYPE";
     private static final Optional<Boolean> OPTIONAL_FALSE = Optional.of(false);
     static final char UNDERSCORE_CHAR = '_';
     static final char COMMA_CHAR = ',';
@@ -622,11 +628,7 @@ final class DSLInterpreter
             Map<CharSequence, CharSequence> aliases = getAliases();
 
             if (m.isAnnotationPresent(Alias.Use.class)) {
-                return ipp -> pp -> {
-                    CharSequence seq = pp.get(0);
-                    CharSequence label = aliases.get(seq);
-                    return label != null ? label : seq;
-                };
+                return ipp -> pp -> getAliased(pp.get(0), aliases);
             }
 
             CommonTableExpression cte = m.getAnnotation(CommonTableExpression.class);
@@ -674,8 +676,56 @@ final class DSLInterpreter
                 }
             }
 
-//        if (m instanceof Field || m instanceof Constructor<?>)
-//            throw new IllegalStateException(e.toString());
+            if (m.isAnnotationPresent(TableExtension.DiscriminatorFilter.class)) {
+                return ipp -> pp -> {
+
+                    boolean isDiscrNumeric;
+                    String discrColumnName;
+                    String discrColumnValue;
+
+                    Class<?> baseType = invocationArguments.get(0).getResultType();
+                    DiscriminatorColumn discrColumn = baseType.getAnnotation(DiscriminatorColumn.class);
+
+                    if (discrColumn != null) {
+                        isDiscrNumeric = discrColumn.discriminatorType() == DiscriminatorType.INTEGER;
+                        discrColumnName = discrColumn.name();
+                    } else {
+                        isDiscrNumeric = false;
+                        discrColumnName = DTYPE;
+                    }
+
+                    Expression derived = invocationArguments.get(1);
+                    Class<?> derivedType = derived.getResultType();
+                    if (derivedType == Class.class) {
+                        derivedType = (Class<?>) ((ConstantExpression) derived).getValue();
+                    }
+
+                    DiscriminatorValue discrValue = derivedType.getAnnotation(DiscriminatorValue.class);
+                    if (discrValue != null)
+                        discrColumnValue = discrValue.value();
+                    else {
+                        discrColumnValue = derivedType.getAnnotation(Entity.class).name();
+                        if (discrColumnValue.isEmpty())
+                            discrColumnValue = derivedType.getName();
+                    }
+
+                    StringBuilder out = new StringBuilder();
+                    out.append(getAliased(pp.get(0), aliases))
+                            .append(DOT_CHAR)
+                            .append(discrColumnName)
+                            .append(KEYWORD_DELIMITER_CHAR + EQUAL_SIGN + KEYWORD_DELIMITER_CHAR);
+
+                    if (!isDiscrNumeric)
+                        out.append(SINGLE_QUOTE_CHAR);
+                    out.append(discrColumnValue);
+                    if (!isDiscrNumeric)
+                        out.append(SINGLE_QUOTE_CHAR);
+
+                    return out;
+
+                };
+            }
+
             co.streamx.fluent.notation.Function function = m.getAnnotation(co.streamx.fluent.notation.Function.class);
             ParameterContext functionContext = function == null ? ParameterContext.INHERIT
                     : getParameterContext(function);
@@ -792,29 +842,29 @@ final class DSLInterpreter
                                 secondary = null;
                             }
 
-                            Expression instExpression = instanceArguments.get(0);
-                            Class<?> entityType = instExpression.getResultType();
-                            CharSequence primary = pp.get(0);
+                            Expression derivedExpression = invocationArguments.get(0);
+                            Class<?> derivedType = derivedExpression.getResultType();
+                            CharSequence derived = pp.get(0);
                             Association assoc;
 
                             if (tableExtension.value() == TableExtensionType.INHERITANCE) {
-                                Class<?> base = getInheritanceBaseType(entityType);
+                                Class<?> base = getInheritanceBaseType(derivedType);
                                 tableRefs.put(originalInst, getTableName(base));
 
-                                registerSecondaryTable(primary, base.getName(), originalInst);
+                                registerSecondaryTable(derived, base.getName(), originalInst);
 
-                                assoc = getAssociation(instExpression, instExpression);
+                                assoc = getAssociation(derivedExpression, derivedExpression);
 
                             } else {
-                                SecondaryTable secondaryTable = getSecondaryTable(entityType, secondary);
+                                SecondaryTable secondaryTable = getSecondaryTable(derivedType, secondary);
                                 tableRefs.put(originalInst, getTableName(secondaryTable));
 
-                                registerSecondaryTable(primary, secondaryTable.name(), originalInst);
+                                registerSecondaryTable(derived, secondaryTable.name(), originalInst);
 
-                                assoc = getAssociation(entityType, secondaryTable);
+                                assoc = getAssociation(derivedType, secondaryTable);
                             }
 
-                            return renderAssociation(new StringBuilder(), assoc, aliases, originalInst, primary);
+                            return renderAssociation(new StringBuilder(), assoc, aliases, originalInst, derived);
                         };
                     }
 
@@ -955,6 +1005,10 @@ final class DSLInterpreter
                         out.append(omitParentheses ? KEYWORD_DELIMITER : RIGHT_PARAN);
 
                         args.close();
+
+                        if (m.isAnnotationPresent(NoOp.class)) {
+                            return null;
+                        }
 
                         if (currentSubQuery != null) // decorator is optional
                             return handleView(subQueries.put(out, currentSubQuery), m, originalParams);
@@ -1289,7 +1343,7 @@ final class DSLInterpreter
                 } finally {
                     renderingContext = previousRenderingContext;
                 }
-            }).filter(seq -> seq.length() > 0).collect(Collectors.joining(NEW_LINE));
+            }).filter(seq -> !Strings.isNullOrEmpty(seq)).collect(Collectors.joining(NEW_LINE));
         };
     }
 

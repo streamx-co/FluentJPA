@@ -104,6 +104,8 @@ public interface JPAAnnotationTestTypes {
         @GeneratedValue
         private long id;
         private String name;
+        @Column(name = "life")
+        private String age;
     }
 
     @Tuple
