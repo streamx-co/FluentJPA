@@ -27,12 +27,12 @@ public class SecondaryTableTest implements CommonTest, JPAAnnotationTestTypes {
 
             boolean condition = userEx.secondary(u);
 
-            SELECT(u, u.getName());
+            SELECT(u, u.getName(), u.getBuddy().getId());
             FROM(u).JOIN(userEx).ON(condition);
         });
 
         // @formatter:off
-        String expected = "SELECT t0.*, t1.name " + 
+        String expected = "SELECT t0.*, t1.name, t1.BUDDY_ID " + 
                 "FROM mtm.MEMBERS AS t0  INNER JOIN mtm.USERS AS t1  ON (t1.UID = t0.id)";
         // @formatter:on
         assertQuery(query, expected);

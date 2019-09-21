@@ -15,6 +15,7 @@ import javax.persistence.InheritanceType;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
+import javax.persistence.OneToOne;
 import javax.persistence.PrimaryKeyJoinColumn;
 import javax.persistence.SecondaryTable;
 import javax.persistence.Table;
@@ -73,6 +74,9 @@ public interface JPAAnnotationTestTypes {
             return true;
         }
 
+        @OneToOne
+        @JoinColumn(name = "BUDDY_ID", table = "USERS", referencedColumnName = "ID")
+        private User buddy;
     }
 
     @Table(name = "EMP", schema = "TPC")

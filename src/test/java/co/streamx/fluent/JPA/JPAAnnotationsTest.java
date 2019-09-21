@@ -160,7 +160,7 @@ public class JPAAnnotationsTest extends IntegrationTest implements JPAAnnotation
 
             boolean condition = userEx.secondary(uu);
 
-            SELECT(uu, uu.getName());
+            SELECT(uu, uu.getName(), uu.getBuddy().getId());
             FROM(uu).JOIN(userEx).ON(condition);
         });
 

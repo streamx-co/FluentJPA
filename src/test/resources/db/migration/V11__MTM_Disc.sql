@@ -12,5 +12,6 @@ CREATE TABLE MTM.GROUP_MEMBER (
 
 CREATE TABLE MTM.users (
     uid INT,
-    name varchar(255)
+    name varchar(255),
+    buddy_id INT
 );
