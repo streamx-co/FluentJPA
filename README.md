@@ -13,7 +13,7 @@ And by saying Java, we **mean** Java. There is no DSL or semantic gap. You use `
 
 ## Competition
 
-How is FluentJPA different (better) than its competitors, jOOQ in particular? This question [was asked](https://www.reddit.com/r/java/comments/ctu53m/fluentjpa_provides_fluent_api_for_writing/exr9g1t) on Reddit by Mr. Lukas Eder, CEO of Data Geekery GmbH, the developer of jOOQ. [Full conversation](https://www.reddit.com/r/java/comments/ctu53m/fluentjpa_provides_fluent_api_for_writing/exr9g1t).
+How is FluentJPA different (better) than its competitors, jOOQ in particular? This question [was asked](https://www.reddit.com/r/java/comments/ctu53m/fluentjpa_provides_fluent_api_for_writing/exr9g1t) on Reddit by Mr. Lukas Eder, CEO of Data Geekery GmbH, the developer of jOOQ. Here is [the answer](https://github.com/streamx-co/FluentJPA/wiki/Solving-real-problems), showing how FluentJPA solves real problems.
 
 ## Setup
 
