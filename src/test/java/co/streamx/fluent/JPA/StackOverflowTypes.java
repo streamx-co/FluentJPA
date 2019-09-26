@@ -537,4 +537,61 @@ public interface StackOverflowTypes {
         private Table3 category;
         private Table3 merchant;
     }
+
+    @Tuple
+    @Table(name = "PHY_VOTE")
+    public class VoteEntity {
+
+        public static final String TITLE = "title";
+        public static final String VALUE = "value";
+        public static final String USER = "user";
+
+        private String title;
+        private String value;
+        private Long id;
+
+        public VoteEntity() {
+        }
+
+        public VoteEntity(Long id) {
+            this.id = id;
+        }
+
+        public VoteEntity(String title, String value) {
+            this.title = title;
+            this.value = value;
+        }
+
+        @Id
+        @GeneratedValue(strategy = GenerationType.SEQUENCE)
+        @Column(name = "VOTE_ID")
+        public Long getId() {
+            return id;
+        }
+
+//        @FilterProperty(operation = FilterProperty.ILIKE)
+        @Column(name = "TITLE", nullable = false, length = 100)
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+//        @FilterProperty(operation = FilterProperty.ILIKE)
+        @Column(name = "VALUE", nullable = false, length = 4)
+        public String getValue() {
+            return value;
+        }
+
+        public void setValue(String value) {
+            this.value = value;
+        }
+
+        public String getOptionsTitleProperty() {
+            return TITLE;
+        }
+
+    }
 }

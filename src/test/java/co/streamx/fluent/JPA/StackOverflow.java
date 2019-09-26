@@ -39,6 +39,7 @@ import static co.streamx.fluent.SQL.SQL.WITH;
 import static co.streamx.fluent.SQL.SQL.row;
 import static co.streamx.fluent.SQL.ScalarFunctions.CASE;
 import static co.streamx.fluent.SQL.ScalarFunctions.CURRENT_DATE;
+import static co.streamx.fluent.SQL.ScalarFunctions.ROUND;
 import static co.streamx.fluent.SQL.ScalarFunctions.WHEN;
 
 import java.sql.Timestamp;
@@ -63,9 +64,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import co.streamx.fluent.SQL.Alias;
+import co.streamx.fluent.SQL.DataType;
 import co.streamx.fluent.SQL.JoinTable;
 import co.streamx.fluent.SQL.Oracle.Format;
 import co.streamx.fluent.SQL.Oracle.FormatModel;
+import co.streamx.fluent.SQL.PostgreSQL.DataTypes;
 import co.streamx.fluent.functions.Function1;
 import co.streamx.fluent.notation.Keyword;
 import co.streamx.fluent.notation.Local;
@@ -884,5 +887,36 @@ public class StackOverflow implements CommonTest, StackOverflowTypes {
         }
 
         return criteria;
+    }
+
+    public static final DataType<Integer> INT = DataTypes.INT;
+
+    @Tuple
+    @Data
+    public static class AverageByTitle {
+        private String title;
+        private float average;
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/57925877/spring-data-jpa-class-based-projections-with-custom-query
+    public void testRoundedAVG() {
+
+        FluentQuery query = FluentJPA.SQL((VoteEntity t) -> {
+
+            Alias<Number> avg = alias(ROUND(SUM(INT.raw(t.getValue())) / COUNT(t.getTitle()), 2),
+                    AverageByTitle::getAverage);
+
+            SELECT(t.getTitle(), avg);
+            FROM(t);
+            GROUP(BY(t.getTitle()));
+        });
+
+        // @formatter:off
+        String expected = "SELECT t0.TITLE, ROUND((SUM(t0.VALUE) / COUNT(t0.TITLE)), 2) AS average\r\n" + 
+                "FROM PHY_VOTE t0\r\n" + 
+                "GROUP BY  t0.TITLE";
+        // @formatter:on
+        assertQuery(query, expected);
     }
 }
