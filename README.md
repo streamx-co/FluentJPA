@@ -195,7 +195,7 @@ FluentJPA.SQL((Part allParts) -> {
 });
 ```
 
-### Example 4 - [getByNameLike()](src/test/java/co/streamx/fluent/JPA/GrammarTest.java#L299-L320)
+### Example 4 - [getByNameLike()](src/test/java/co/streamx/fluent/JPA/GrammarTest.java#L295-L315)
 
 [Dynamic Queries](https://github.com/streamx-co/FluentJPA/wiki/Dynamic-Queries) without [Criteria API](https://en.wikibooks.org/wiki/Java_Persistence/Criteria):
 
