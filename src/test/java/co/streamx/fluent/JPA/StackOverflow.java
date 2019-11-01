@@ -1,5 +1,6 @@
 package co.streamx.fluent.JPA;
 
+import static co.streamx.fluent.SQL.AggregateFunctions.AVG;
 import static co.streamx.fluent.SQL.AggregateFunctions.COUNT;
 import static co.streamx.fluent.SQL.AggregateFunctions.MAX;
 import static co.streamx.fluent.SQL.AggregateFunctions.ROW_NUMBER;
@@ -13,6 +14,7 @@ import static co.streamx.fluent.SQL.Directives.recurseOn;
 import static co.streamx.fluent.SQL.Directives.subQuery;
 import static co.streamx.fluent.SQL.Library.pick;
 import static co.streamx.fluent.SQL.Library.selectAll;
+import static co.streamx.fluent.SQL.MySQL.SQL.DATE;
 import static co.streamx.fluent.SQL.MySQL.SQL.GROUP_CONCAT;
 import static co.streamx.fluent.SQL.MySQL.SQL.IF;
 import static co.streamx.fluent.SQL.MySQL.SQL.LIMIT;
@@ -916,6 +918,67 @@ public class StackOverflow implements CommonTest, StackOverflowTypes {
         String expected = "SELECT t0.TITLE, ROUND((SUM(t0.VALUE) / COUNT(t0.TITLE)), 2) AS average\r\n" + 
                 "FROM PHY_VOTE t0\r\n" + 
                 "GROUP BY  t0.TITLE";
+        // @formatter:on
+        assertQuery(query, expected);
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/58338983/jpa-aggregation-on-aggregated-subquery-result
+    public void testMaxCnt() {
+
+        FluentQuery query = FluentJPA.SQL(() -> {
+
+            DailyCount daily = subQuery((Transaction t) -> {
+
+                Date date = alias(DATE(t.getStartDate()), DailyCount::getDate);
+                int count = alias(COUNT(t.getId()), DailyCount::getCount);
+
+                SELECT(date, count);
+                FROM(t);
+                GROUP(BY(date));
+            });
+
+            SELECT(AVG(daily.getCount())); // or MAX
+            FROM(daily);
+        });
+
+        // @formatter:off
+        String expected = "SELECT AVG(q0.count)\r\n" + 
+                "FROM (SELECT DATE(t0.start_date) AS date, COUNT(t0.id) AS count\r\n" + 
+                "FROM transaction t0\r\n" + 
+                "GROUP BY  DATE(t0.start_date)) q0";
+        // @formatter:on
+        assertQuery(query, expected);
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/58544731/jpql-many-to-many-with-in-clause
+    public void findGraphJobsByRolesTest() {
+
+        List<String> roles = Arrays.asList("a", "b");
+
+        FluentQuery query = FluentJPA.SQL((GraphJob job) -> {
+
+            List<Long> jobIds = subQuery((CloverRole r,
+                                          JoinTable<GraphJob, CloverRole> graphJobRole) -> {
+
+                SELECT(graphJobRole.getJoined().getId());
+                FROM(graphJobRole).JOIN(r).ON(graphJobRole.inverseJoin(r, GraphJob::getRoles));
+                WHERE(roles.contains(r.getRoleName()));
+            });
+
+            SELECT(job);
+            FROM(job);
+            WHERE(jobIds.contains(job.getId()));
+
+        });
+
+        // @formatter:off
+        String expected = "SELECT t0.*\r\n" + 
+                "FROM graph_job t0\r\n" + 
+                "WHERE (t0.id IN (SELECT t2.graph_job_id\r\n" + 
+                "FROM graph_job_role t2  INNER JOIN clover_role t1  ON (t2.clover_role_id = t1.role_id)\r\n" + 
+                "WHERE (t1.role_name IN ?1 )) )";
         // @formatter:on
         assertQuery(query, expected);
     }

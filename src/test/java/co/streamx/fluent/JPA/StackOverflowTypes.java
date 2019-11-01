@@ -1,6 +1,7 @@
 package co.streamx.fluent.JPA;
 
 import java.sql.Timestamp;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -592,6 +593,57 @@ public interface StackOverflowTypes {
         public String getOptionsTitleProperty() {
             return TITLE;
         }
+
+    }
+
+    @Tuple
+    @Table(name = "transaction")
+    @Getter
+    public class Transaction {
+
+        @Id
+        @GeneratedValue
+        @Column(name = "id")
+        private Long id;
+
+        @Column(name = "start_date", nullable = false)
+        private Date startDate;
+
+    }
+
+    @Tuple
+    @Getter
+    public class DailyCount {
+        private Integer count;
+        private Date date;
+    }
+
+    @Data
+    @Tuple
+    @Table(name = "clover_role")
+    public class CloverRole {
+
+        @Id
+        @Column(name = "role_id")
+        @GeneratedValue(strategy = GenerationType.AUTO)
+        private Long id;
+
+        private String roleName;
+    }
+
+    @Data
+    @Tuple
+    @Table(name = "graph_job")
+    public class GraphJob {
+
+        @Id
+        @GeneratedValue(strategy = GenerationType.AUTO)
+        private Long id;
+
+        @JoinTable(name = "graph_job_role", joinColumns = { @JoinColumn(name = "graph_job_id") }, inverseJoinColumns = {
+                @JoinColumn(name = "clover_role_id") })
+        @ManyToMany
+        private Collection<CloverRole> roles;
 
     }
 }
