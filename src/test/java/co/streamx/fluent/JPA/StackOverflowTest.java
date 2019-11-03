@@ -78,7 +78,7 @@ import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
 import lombok.Getter;
 
-public class StackOverflow implements CommonTest, StackOverflowTypes {
+public class StackOverflowTest implements CommonTest, StackOverflowTypes {
 
     @BeforeAll
     public static void init() {

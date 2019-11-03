@@ -26,7 +26,7 @@ import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-public class testINSERT implements CommonTest {
+public class TestINSERT implements CommonTest {
 
     @BeforeAll
     public static void init() {

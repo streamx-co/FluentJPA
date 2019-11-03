@@ -52,7 +52,7 @@ import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
 import lombok.Getter;
 
-public class testMERGE implements CommonTest {
+public class TestMERGE implements CommonTest {
 
     @BeforeEach
     public void init() {

@@ -37,7 +37,7 @@ import org.junit.jupiter.api.Test;
 import co.streamx.fluent.SQL.PostgreSQL.DataTypes;
 import co.streamx.fluent.SQL.PostgreSQL.DatePart;
 
-public class ModeComTutorial implements CommonTest, ModeComTutorialTypes {
+public class ModeComTutorialTest implements CommonTest, ModeComTutorialTypes {
 
     @BeforeAll
     public static void init() {

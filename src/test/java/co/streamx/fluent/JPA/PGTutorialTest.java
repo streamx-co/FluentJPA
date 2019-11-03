@@ -53,7 +53,7 @@ import co.streamx.fluent.SQL.View;
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
 
-public class PGTutorial implements CommonTest, PGtutorialTypes {
+public class PGTutorialTest implements CommonTest, PGtutorialTypes {
 
     @BeforeAll
     public static void init() {

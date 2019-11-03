@@ -52,7 +52,7 @@ import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
 import lombok.Getter;
 
-public class testSELECT implements CommonTest, ElementCollectionTypes {
+public class TestSELECT implements CommonTest, ElementCollectionTypes {
 
     @BeforeAll
     public static void init() {

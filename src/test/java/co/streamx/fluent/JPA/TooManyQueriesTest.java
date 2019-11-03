@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
-public class TooManyQueries extends IntegrationTest implements TooManyQueriesTypes {
+public class TooManyQueriesTest extends IntegrationTest implements TooManyQueriesTypes {
     private static final String HASH = "hash";
 
     @Autowired
