@@ -35,6 +35,8 @@ import lombok.SneakyThrows;
 
 
 class Normalizer extends SimpleExpressionVisitor {
+    public static final String DYNAMIC_QUERIES_FUNCTIONALITY = "Dynamic Queries functionality";
+    private static final String METHODS_PARSING_FEATURE = "Methods parsing feature";
     private static final String COMPARE_TO = "compareTo";
     private final Method compareToMethod;
 
@@ -86,11 +88,18 @@ class Normalizer extends SimpleExpressionVisitor {
             return super.visit(e);
 
         if (Modifier.isStatic(method.getModifiers()) || method.isDefault()) {
+            if (!FluentJPA.checkLicense()) {
+                String name = method.getDeclaringClass().getName();
+                if (!name.startsWith("co.streamx.fluent.SQL."))
+                    throw TranslationError.REQUIRES_LICENSE.getError(METHODS_PARSING_FEATURE);
+            }
             LambdaExpression<?> parsed = LambdaExpression.parseMethod(method, e.getInstance());
             return visit(parsed);
         }
 
         if (isFunctionalInterfaceCall(method)) {
+            if (!FluentJPA.checkLicense())
+                throw TranslationError.REQUIRES_LICENSE.getError(DYNAMIC_QUERIES_FUNCTIONALITY);
             Expression instance = e.getInstance();
             if (instance != null && instance.getExpressionType() == ExpressionType.Parameter) {
                 int index = ((ParameterExpression) instance).getIndex();
@@ -137,6 +146,8 @@ class Normalizer extends SimpleExpressionVisitor {
         Executable method = (Executable) member;
 
         if (method.isAnnotationPresent(Local.class)) {
+            if (!FluentJPA.checkLicense())
+                throw TranslationError.REQUIRES_LICENSE.getError(DYNAMIC_QUERIES_FUNCTIONALITY);
             Object result = LambdaExpression.compile(e).apply(contextArgumentsArray(e.getArguments()));
             boolean isSynthetic = result != null && isFunctional(result.getClass());
             if (isSynthetic) {

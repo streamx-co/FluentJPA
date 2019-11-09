@@ -145,8 +145,20 @@ final class DSLInterpreter
         undeclaredAliases.add(alias);
     }
 
-    private ParameterContext getParameterContext(co.streamx.fluent.notation.Function f) {
+    private ParameterContext getParameterContext(co.streamx.fluent.notation.Function f,
+                                                 CommonTableExpression cte) {
         for (Capability cap : f.parameterContextCapabilities()) {
+            switch (cap) {
+            case ALIAS_DELETE:
+            case ALIAS_INSERT:
+            case ALIAS_UPDATE:
+                if (cte == null) {
+                    if (!FluentJPA.checkLicense())
+                        throw TranslationError.REQUIRES_LICENSE.getError("INSERT/UPDATE/DELETE functionality");
+                }
+            default:
+            }
+
             if (capabilities.contains(cap))
                 return (ParameterContext) cap.getHint();
         }
@@ -589,6 +601,8 @@ final class DSLInterpreter
             }
 
             if (m.isAnnotationPresent(Parameter.class)) {
+                if (!FluentJPA.checkLicense())
+                    throw TranslationError.REQUIRES_LICENSE.getError(Normalizer.DYNAMIC_QUERIES_FUNCTIONALITY);
                 return ipp -> pp -> {
                     CharSequence seq = pp.get(0);
                     if (!Strings.isNullOrEmpty(seq) && seq.charAt(0) == QUESTION_MARK_CHAR)
@@ -728,7 +742,7 @@ final class DSLInterpreter
 
             co.streamx.fluent.notation.Function function = m.getAnnotation(co.streamx.fluent.notation.Function.class);
             ParameterContext functionContext = function == null ? ParameterContext.INHERIT
-                    : getParameterContext(function);
+                    : getParameterContext(function, cte);
             Annotation[][] parametersAnnotations = m.getParameterAnnotations();
 
             List<Function<Expression, Function<CharSequence, CharSequence>>> argsBuilder = new ArrayList<>(

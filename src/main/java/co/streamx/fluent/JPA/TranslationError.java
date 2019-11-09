@@ -20,6 +20,12 @@ enum TranslationError {
     SECONDARY_TABLE_NOT_FOUND("Cannot find secondary table {1} declared on {0} entity"),
     SECONDARY_TABLE_NOT_CONSTANT("Secondary table name must be a constant. ({0})"),
     INHERITANCE_STRATEGY_NOT_FOUND("Inheritance strategy not found on {0} entity"),
+    REQUIRES_LICENSE("{0} requires a license. Get one at https://fluentjpa.com") {
+        @Override
+        public RuntimeException getError(Object... args) {
+            return new UnsupportedOperationException(MessageFormat.format(pattern, args));
+        }
+    },
     UNMAPPED_FIELD(
             "Cannot translate property: {0}. FluentJPA methods must be either static, interface default or annotated with @Local") {
         @Override
