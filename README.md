@@ -233,6 +233,8 @@ private Function1<CoverageMaster, Boolean> buildOr1(List<String> likes) {
 
 > [Full documentation](https://github.com/streamx-co/FluentJPA/wiki)
 
-## Licensing
+## License
 
-FluentJPA is licensed under [dual license](https://github.com/streamx-co/FluentJPA/wiki/License-Model) model. [AGPL](http://www.gnu.org/licenses/agpl-3.0.html) for free software projects and [commercial license](https://fluentjpa.com/) for the others.
+Fluent JPA employs a Freemium license model, where some functionality is totally free and more advanced features [require a license](https://fluentjpa.com). Data retrieval expressions (SELECT), including CTE, Window Functions, Aggregate Expressions are free. Data update expressions (INSERT/UPDATE/DELETE/MERGE) and Dynamic Queries [require a license](https://fluentjpa.com).
+
+> **Note for Forkers**: this library depends on [ExTree library](https://github.com/streamx-co/ExTree), which is licensed under [AGPL-3.0](https://github.com/streamx-co/ExTree/blob/master/LICENSE). It has a special licensing exception for official `Streamx` artefacts only. As a result, any fork of this library must be licensed under AGPL license.
