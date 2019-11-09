@@ -66,7 +66,6 @@ public final class FluentJPA {
      * @param licStream      if null, will try to load fluent-jpa.lic file from root
      * @param suppressBanner suppresses license banner if license is valid
      * @return true if license is valid
-     * @throws IOException
      */
     @SneakyThrows
     public static boolean checkLicense(InputStream licStream,
