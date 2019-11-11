@@ -12,6 +12,7 @@ import static co.streamx.fluent.SQL.Directives.injectSQL;
 import static co.streamx.fluent.SQL.Directives.parameter;
 import static co.streamx.fluent.SQL.Directives.recurseOn;
 import static co.streamx.fluent.SQL.Directives.subQuery;
+import static co.streamx.fluent.SQL.Directives.typeOf;
 import static co.streamx.fluent.SQL.Library.pick;
 import static co.streamx.fluent.SQL.Library.selectAll;
 import static co.streamx.fluent.SQL.MySQL.SQL.DATE;
@@ -981,5 +982,36 @@ public class StackOverflowTest implements CommonTest, StackOverflowTypes {
                 "WHERE (t1.role_name IN ?1 )) )";
         // @formatter:on
         assertQuery(query, expected);
+    }
+
+    @Test
+    // https://stackoverflow.com/questions/58764868/find-elements-of-specific-type-in-single-table-inheritance-type
+    public void findEntityUsingResources() {
+
+        String property2 = "dfgdfg";
+
+        FluentQuery query = FluentJPA.SQL((EntityUsingResource entity) -> {
+
+            List<Long> resourceIds = subQuery((Resource res) -> {
+
+                SELECT(res.getEntityUsingResource().getId());
+                FROM(res);
+                WHERE(typeOf(res, Resource2.class) && ((Resource2) res).getProperty2().matches("%" + property2 + "%"));
+
+            });
+
+            SELECT(entity);
+            FROM(entity);
+            WHERE(resourceIds.contains(entity.getId()));
+        });
+
+        // @formatter:off
+        String expected = "SELECT t0.*\r\n" + 
+                "FROM entity_using_resource t0\r\n" + 
+                "WHERE (t0.id IN (SELECT t1.entity_id\r\n" + 
+                "FROM resource t1\r\n" + 
+                "WHERE (t1.type = 'resource2' AND (t1.property2 LIKE  CONCAT( CONCAT( '%' ,  ?1 ) ,  '%' )  ))) )";
+        // @formatter:on
+        assertQuery(query, expected, arrayOf(property2));
     }
 }
