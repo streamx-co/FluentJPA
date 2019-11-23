@@ -439,16 +439,19 @@ public class PGTutorialTest implements CommonTest, PGtutorialTypes {
         toInsert.setUrl("https://www.tumblr.com/");
         toInsert.setName("Tumblr");
 
+        Integer storeId = 6;
+
         query = FluentJPA.SQL((Link link) -> {
 
-            View<Link> viewOfLink = viewOf(link, Link::getUrl, Link::getName, Link::getLastUpdate);
+            View<Link> viewOfLink = viewOf(link, Link::getUrl, Link::getName, l -> l.getStore().getId(),
+                    Link::getLastUpdate);
             INSERT().INTO(viewOfLink);
-            VALUES(viewOfLink.from(toInsert, DEFAULT()));
+            VALUES(viewOfLink.from(toInsert, storeId, DEFAULT()));
         });
 
-        expected = "INSERT   INTO  link AS t0 (url, name, last_update)  "
-                + "VALUES (?1, ?2, DEFAULT  )";
-        assertQuery(query, expected);
+        expected = "INSERT   INTO  link AS t0 (url, name, store_id, last_update)  "
+                + "VALUES (?1, ?2, ?3, DEFAULT  )";
+        assertQuery(query, expected, arrayOf(toInsert.getUrl(), toInsert.getName(), storeId));
     }
 
     @Tuple
