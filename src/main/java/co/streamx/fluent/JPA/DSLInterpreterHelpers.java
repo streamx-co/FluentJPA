@@ -260,7 +260,7 @@ interface DSLInterpreterHelpers {
 
     @RequiredArgsConstructor
     @Getter
-    class ParameterRef implements Wrapped {
+    final class ParameterRef implements Wrapped {
 
         private CharSequence seq;
         private final Object value;

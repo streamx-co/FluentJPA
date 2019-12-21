@@ -83,6 +83,7 @@ public final class FluentJPA {
             } catch (Exception e) {
                 log.warn("Licence check failed", e);
                 reportNoLicense();
+                isLicensed = true;
             } finally {
                 if (closeStream && licStream != null)
                     licStream.close();
