@@ -100,7 +100,7 @@ public class GrammarTest implements CommonTest {
     public static final Sequence<Long> staticSequence = sequence("static");
 
     @Test
-    public void testSequnce() throws Exception {
+    public void testSequence() throws Exception {
 
         FluentQuery query = FluentJPA.SQL(() -> {
 

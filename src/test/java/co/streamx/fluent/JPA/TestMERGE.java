@@ -82,7 +82,7 @@ public class TestMERGE implements CommonTest {
 
     // In real app would be an Entity
     @Tuple
-    @Table(name = "ProductInventory")
+    @Table(name = "Product")
     @Data
     public static class Product {
         @Id

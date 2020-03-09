@@ -85,7 +85,7 @@ final class JPAHelpers {
     @Getter
     @RequiredArgsConstructor
     @ToString
-    public static class ID {
+    public static final class ID {
 
         private final CharSequence path;
         private final CharSequence column;

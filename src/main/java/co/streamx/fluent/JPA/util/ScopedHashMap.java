@@ -57,10 +57,10 @@ public class ScopedHashMap<K, V> extends HashMap<K, V> {
         V removed = super.remove(key);
         if (removed != null)
             return removed;
-        removed = super.get(key);
+        removed = upper.get(key);
         if (removed != null) {
-        if (removedKeys == Collections.emptyList())
-            removedKeys = new ArrayList<>();
+            if (removedKeys == Collections.emptyList())
+                removedKeys = new ArrayList<>();
             removedKeys.add((K) key);
         }
 

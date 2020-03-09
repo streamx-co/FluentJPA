@@ -896,13 +896,12 @@ final class DSLInterpreter
 
                 if (function != null) {
 
-                    CharSequence fn = function.name().equals(co.streamx.fluent.notation.Function.USE_METHOD_NAME)
+                    CharSequence functionName = function.name()
+                            .equals(co.streamx.fluent.notation.Function.USE_METHOD_NAME)
                             ? function.underscoresAsBlanks()
                                     ? m.getName().replace(UNDERSCORE_CHAR, KEYWORD_DELIMITER_CHAR)
                                     : m.getName()
                             : function.name();
-
-                    CharSequence functionName = fn;
 
                     Operator operator = m.getAnnotation(Operator.class);
 
@@ -981,7 +980,7 @@ final class DSLInterpreter
                         if (operator == null) {
 
                             omitParentheses = function.omitParentheses()
-                                    || (function.omitParenthesesIfArgumentess() && argsBuilderBound.isEmpty());
+                                    || (function.omitParenthesesIfArgumentless() && argsBuilderBound.isEmpty());
                             out.append(functionName);
                             out.append(omitParentheses ? KEYWORD_DELIMITER : LEFT_PARAN);
 
