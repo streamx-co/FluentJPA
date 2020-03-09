@@ -3,13 +3,16 @@ if: tag IS present
 
 language: java
 
+# https://docs.travis-ci.com/user/languages/java/
 jdk:
   - oraclejdk11
   - oraclejdk12
   - oraclejdk13
+  - oraclejdk14
   - openjdk8
   - openjdk9
   - openjdk10
   - openjdk11
   - openjdk12
   - openjdk13
+  - openjdk14
