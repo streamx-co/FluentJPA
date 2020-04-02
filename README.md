@@ -235,7 +235,7 @@ private Function1<CoverageMaster, Boolean> buildOr1(List<String> likes) {
 
 ## License
 
-Fluent JPA is licensed based on number of active (floating) developers. The product comes with 1-3 year of support and upgrades, but the license is perpetual (indefinitely usable). Therefore you are not required to renew your licence annually or to renew it at all, [more details](https://fluentjpa.com/pricing-faq).
+Fluent JPA is licensed based on number of active (floating) developers. The product comes with 1-3 years of support and upgrades, but the license is perpetual (indefinitely usable). Therefore you are not required to renew your licence annually or to renew it at all, [more details](https://fluentjpa.com/pricing-faq).
 
 > This work is dual-licensed under [Affero GPL 3.0](https://opensource.org/licenses/AGPL-3.0) and [Lesser GPL 3.0](https://opensource.org/licenses/LGPL-3.0).
 The source code is licensed under AGPL and official binaries under LGPL.
