@@ -313,9 +313,9 @@
 		<spring.boot.version>2.1.8.RELEASE</spring.boot.version>
 		<junit-platform.version>1.5.2</junit-platform.version>
 		<flyway.version>5.2.4</flyway.version>
-		<ex-tree.version>2.5.10-SNAPSHOT</ex-tree.version>
-		<jpa-notations.version>1.0.14-SNAPSHOT</jpa-notations.version>
-		<sql-grammar.version>1.0.15-SNAPSHOT</sql-grammar.version>
+		<ex-tree.version>2.6.0</ex-tree.version>
+		<jpa-notations.version>1.0.14</jpa-notations.version>
+		<sql-grammar.version>1.0.15</sql-grammar.version>
 		<jwt.version>3.10.1</jwt.version>
 	</properties>
 </project>
