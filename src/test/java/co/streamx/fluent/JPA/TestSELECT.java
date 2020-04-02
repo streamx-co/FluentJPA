@@ -33,6 +33,7 @@ import static co.streamx.fluent.SQL.TransactSQL.SQL.sequence;
 
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.util.Collection;
 
 import javax.persistence.Column;
 import javax.persistence.Id;
@@ -178,7 +179,7 @@ public class TestSELECT implements CommonTest, ElementCollectionTypes {
         assertQuery(query, expected);
     }
 
-    private static int avgPriceForProductModel(ProductModel model) {
+    private static Collection<Integer> avgPriceForProductModel(ProductModel model) {
         return subQuery((Product p2) -> {
             SELECT(AVG(p2.getListPrice()));
             FROM(p2);

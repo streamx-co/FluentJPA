@@ -1,16 +1,19 @@
 package co.streamx.fluent.JPA;
 
-import java.io.IOException;
+import java.io.BufferedReader;
 import java.io.InputStream;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.lang.management.ManagementFactory;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.Date;
-import java.util.OptionalInt;
+import java.util.List;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import co.streamx.fluent.JPA.spi.JPAConfiguration;
 import co.streamx.fluent.JPA.spi.SQLConfigurator;
@@ -23,9 +26,6 @@ import co.streamx.fluent.functions.Consumer4;
 import co.streamx.fluent.functions.Consumer5;
 import co.streamx.fluent.functions.Consumer6;
 import co.streamx.fluent.notation.Capability;
-import javax0.license3j.License;
-import javax0.license3j.io.IOFormat;
-import javax0.license3j.io.LicenseReader;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -48,7 +48,9 @@ public final class FluentJPA {
     private static Set<Capability> capabilities = Collections.emptySet();
 
     private static final AtomicBoolean licenseChecked = new AtomicBoolean();
-    private static volatile boolean isLicensed;
+    private static volatile boolean isLicensed = true;
+
+    private static final String DEBUG_MODE = "Debug mode";
 
     static {
         ServiceLoader<SQLConfigurator> loader = ServiceLoader.load(SQLConfigurator.class);
@@ -71,19 +73,57 @@ public final class FluentJPA {
     public static boolean checkLicense(InputStream licStream,
                                        boolean suppressBanner) {
         if (licenseChecked.compareAndSet(false, true)) {
+
+            String versionString = System.getProperty("java.version");
+            Pattern p = Pattern.compile("\\D");
+            Matcher matcher = p.matcher(versionString);
+            if (matcher.find()) {
+                int dot = matcher.start();
+                versionString = versionString.substring(0, dot);
+            }
+
+            int version = Integer.parseInt(versionString);
+            if (version > 14) {
+                isLicensed = false;
+                throw new UnsupportedClassVersionError(
+                        "Java " + versionString + " is not supported by this FluentJPA version.");
+            }
+
+            boolean needLicense = false;
+            List<String> arguments = ManagementFactory.getRuntimeMXBean().getInputArguments();
+            for (String arg : arguments) {
+                needLicense = arg.startsWith("-Xrunjdwp") || arg.startsWith("-agentlib:jdwp");
+                if (needLicense)
+                    break;
+            }
+
+            if (!needLicense)
+                return isLicensed;
+
             boolean closeStream = licStream == null;
             try {
                 if (closeStream)
                     licStream = FluentJPA.class.getClassLoader().getResourceAsStream("fluent-jpa.lic");
+
+                String key;
                 if (licStream == null) {
-                    reportNoLicense();
+                    key = null;
                 } else {
-                    isLicensed = checkLicense0(licStream, suppressBanner);
+                    Reader r = new InputStreamReader(licStream, StandardCharsets.US_ASCII);
+                    BufferedReader bufferedReader = new BufferedReader(r);
+                    key = bufferedReader.lines().collect(Collectors.joining());
                 }
+
+                License.validate(key);
+                if (key != null)
+                    License.reportLicenseOk();
+                else
+                    License.reportNoLicense();
+                isLicensed = true;
+
             } catch (Exception e) {
                 log.warn("Licence check failed", e);
-                reportNoLicense();
-                isLicensed = true;
+                isLicensed = false;
             } finally {
                 if (closeStream && licStream != null)
                     licStream.close();
@@ -100,77 +140,14 @@ public final class FluentJPA {
         return checkLicense(null, false);
     }
 
-    private static boolean checkLicense0(InputStream licStream,
-                                        boolean suppressBanner)
-            throws IOException {
-        try (InputStream keyStream = FluentJPA.class.getClassLoader().getResourceAsStream("public.key");
-                LicenseReader licenseReader = new LicenseReader(licStream)) {
-            License lic = licenseReader.read(IOFormat.STRING);
-
-            byte[] key = new byte[298]; // size of the public.lic file
-            keyStream.read(key);
-
-            boolean ok = lic.isOK(key);
-            if (!ok) {
-                reportNoLicense();
-                return false;
-            }
-
-            Date expiration = lic.get("expiration").getDate();
-            long currentTimeMillis = System.currentTimeMillis();
-            if (expiration.getTime() < currentTimeMillis) {
-                reportLicenseExpired();
-                long grace = 3600 * 24 * 30 * 1000; // 1 month
-                return expiration.getTime() > (currentTimeMillis - grace);
-            }
-
-            if (!suppressBanner) {
-                String project = lic.get("project").getString();
-                reportLicenseOk(project, expiration);
-            }
-
-            return true;
-        }
-    }
-
-    private static void reportLicenseOk(String project,
-                                        Date expiration) {
-        DateFormat dateFormat = new SimpleDateFormat("yyyy-MMM-dd");
-
-        printBanner("Thank you for using FluentJPA in the awesome '" + project + "' project!\nLicense expires at "
-                + dateFormat.format(expiration) + ".");
-    }
-
-    private static void reportNoLicense() {
-        printBanner(
-                "Thank you for using FluentJPA!\nNo valid FluentJPA license file was found.\nSome FluentJPA features are locked.");
-    }
-
-    private static void reportLicenseExpired() {
-        printBanner(
-                "Thank you for using FluentJPA!\nFluentJPA commercial license has expired, please renew.\nSome FluentJPA features are locked.");
-    }
-
-
-    private static void printBanner(String message) {
-
-        OptionalInt length = Arrays.stream(message.split("\n")).mapToInt(String::length).max();
-
-        char[] dashes = new char[length.orElse(50)];
-        Arrays.fill(dashes, '#');
-        System.out.println(dashes);
-        System.out.println();
-        System.out.println(message);
-        System.out.println();
-        System.out.println(dashes);
-        System.out.println();
-    }
-
     public static SQLConfigurator SQLConfig() {
         return SQLConfig;
     }
 
     private static FluentQuery SQL(Object fluentQuery) {
+
+        if (!FluentJPA.checkLicense())
+            throw TranslationError.REQUIRES_LICENSE.getError(DEBUG_MODE);
 
         LambdaExpression<?> parsed = LambdaExpression.parse(fluentQuery);
 

@@ -151,9 +151,9 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-            <groupId>co.streamx.license3j</groupId>
-            <artifactId>license3j-JVM8</artifactId>
-            <version>${license3j.version}</version>
+            <groupId>com.auth0</groupId>
+            <artifactId>java-jwt</artifactId>
+            <version>${jwt.version}</version>
         </dependency>
 	</dependencies>
 
@@ -316,6 +316,6 @@
 		<ex-tree.version>2.5.10-SNAPSHOT</ex-tree.version>
 		<jpa-notations.version>1.0.14-SNAPSHOT</jpa-notations.version>
 		<sql-grammar.version>1.0.15-SNAPSHOT</sql-grammar.version>
-		<license3j.version>3.1.2</license3j.version>
+		<jwt.version>3.10.1</jwt.version>
 	</properties>
 </project>

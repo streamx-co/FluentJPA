@@ -3,9 +3,9 @@ package co.streamx.fluent.SQL;
 import static co.streamx.fluent.SQL.AggregateFunctions.AVG;
 import static co.streamx.fluent.SQL.AggregateFunctions.SUM;
 import static co.streamx.fluent.SQL.Directives.alias;
+import static co.streamx.fluent.SQL.Directives.aliasOf;
 import static co.streamx.fluent.SQL.Directives.recurseOn;
 import static co.streamx.fluent.SQL.Directives.subQuery;
-import static co.streamx.fluent.SQL.Directives.aliasOf;
 import static co.streamx.fluent.SQL.Directives.viewOf;
 import static co.streamx.fluent.SQL.Library.COUNT;
 import static co.streamx.fluent.SQL.Library.ISNULL;
@@ -27,6 +27,7 @@ import static co.streamx.fluent.SQL.SQL.WITH;
 import static co.streamx.fluent.SQL.TransactSQL.SQL.DATEADD;
 import static co.streamx.fluent.SQL.TransactSQL.SQL.YEAR;
 
+import java.util.Collection;
 import java.util.List;
 
 import javax.persistence.JoinColumn;
@@ -233,7 +234,7 @@ public class TestSQLServerTutorial implements CommonTest {
             SELECT(p.getName(), listPrice);
             FROM(p);
 
-            double avgListPrice = subQuery((Product p1) -> {
+            Collection<Double> avgListPrice = subQuery((Product p1) -> {
                 SELECT(AVG(p1.getListPrice()));
                 FROM(p1);
                 GROUP(BY(p1.getBrand().getId()));

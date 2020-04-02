@@ -145,20 +145,8 @@ final class DSLInterpreter
         undeclaredAliases.add(alias);
     }
 
-    private ParameterContext getParameterContext(co.streamx.fluent.notation.Function f,
-                                                 CommonTableExpression cte) {
+    private ParameterContext getParameterContext(co.streamx.fluent.notation.Function f) {
         for (Capability cap : f.parameterContextCapabilities()) {
-            switch (cap) {
-            case ALIAS_DELETE:
-            case ALIAS_INSERT:
-            case ALIAS_UPDATE:
-                if (cte == null) {
-                    if (!FluentJPA.checkLicense())
-                        throw TranslationError.REQUIRES_LICENSE.getError("INSERT/UPDATE/DELETE functionality");
-                }
-            default:
-            }
-
             if (capabilities.contains(cap))
                 return (ParameterContext) cap.getHint();
         }
@@ -232,17 +220,16 @@ final class DSLInterpreter
                 };
             default:
                 throw new IllegalArgumentException(
-                        TranslationError.UNSUPPORTED_EXPRESSION_TYPE
-                                .getError(getOperatorSign(e.getExpressionType())));
+                        TranslationError.UNSUPPORTED_EXPRESSION_TYPE.getError(getOperatorSign(e.getExpressionType())));
             }
         };
     }
 
     private StringBuilder renderAssociation(StringBuilder out,
-                                   Association assoc,
-                                   Map<CharSequence, CharSequence> aliases,
-                                   CharSequence lseq,
-                                   CharSequence rseq) {
+                                            Association assoc,
+                                            Map<CharSequence, CharSequence> aliases,
+                                            CharSequence lseq,
+                                            CharSequence rseq) {
         out.append(LEFT_PARAN);
 
         for (int i = 0; i < assoc.getCardinality(); i++) {
@@ -264,8 +251,6 @@ final class DSLInterpreter
 
         return out.append(RIGHT_PARAN);
     }
-
-
 
     @Override
     public Function<List<Expression>, Function<List<CharSequence>, CharSequence>> visit(ConstantExpression e) {
@@ -381,9 +366,8 @@ final class DSLInterpreter
         return curArgs;
     }
 
-
     private List<Expression> prepareLambdaParameters(List<ParameterExpression> declared,
-                                                            List<Expression> arguments) {
+                                                     List<Expression> arguments) {
         List<Expression> result = new ArrayList<>(declared);
         for (int i = 0; i < arguments.size(); i++) {
             if (i >= declared.size())
@@ -462,15 +446,14 @@ final class DSLInterpreter
                         return npe;
                     });
                 }
-                return f.compose(visitParameters(e.getParameters(), fparams, eargsFinal))
-                        .andThen(seq -> {
-                            try {
-                                return seq;
-                            } finally {
-                                if (!skipScopeAllocation)
-                                    capturedSubQueries.close();
-                            }
-                        });
+                return f.compose(visitParameters(e.getParameters(), fparams, eargsFinal)).andThen(seq -> {
+                    try {
+                        return seq;
+                    } finally {
+                        if (!skipScopeAllocation)
+                            capturedSubQueries.close();
+                    }
+                });
             } finally {
                 if (!skipScopeAllocation) {
                     aliases_ = currentAliases;
@@ -601,8 +584,6 @@ final class DSLInterpreter
             }
 
             if (m.isAnnotationPresent(Parameter.class)) {
-                if (!FluentJPA.checkLicense())
-                    throw TranslationError.REQUIRES_LICENSE.getError(Normalizer.DYNAMIC_QUERIES_FUNCTIONALITY);
                 return ipp -> pp -> {
                     CharSequence seq = pp.get(0);
                     if (!Strings.isNullOrEmpty(seq) && seq.charAt(0) == QUESTION_MARK_CHAR)
@@ -742,7 +723,7 @@ final class DSLInterpreter
 
             co.streamx.fluent.notation.Function function = m.getAnnotation(co.streamx.fluent.notation.Function.class);
             ParameterContext functionContext = function == null ? ParameterContext.INHERIT
-                    : getParameterContext(function, cte);
+                    : getParameterContext(function);
             Annotation[][] parametersAnnotations = m.getParameterAnnotations();
 
             List<Function<Expression, Function<CharSequence, CharSequence>>> argsBuilder = new ArrayList<>(
@@ -813,8 +794,7 @@ final class DSLInterpreter
                             return new IdentifierPath.MultiColumnIdentifierPath(m.getName(),
                                     clazz -> getAssociationMTM(member,
                                             !member.getDeclaringClass().isAssignableFrom(clazz)),
-                                    null).resolveInstance(lseq,
-                                                    tableSecondaryRefs.get(lseq));
+                                    null).resolveInstance(lseq, tableSecondaryRefs.get(lseq));
                         };
                     }
 
@@ -898,10 +878,10 @@ final class DSLInterpreter
 
                     CharSequence functionName = function.name()
                             .equals(co.streamx.fluent.notation.Function.USE_METHOD_NAME)
-                            ? function.underscoresAsBlanks()
-                                    ? m.getName().replace(UNDERSCORE_CHAR, KEYWORD_DELIMITER_CHAR)
-                                    : m.getName()
-                            : function.name();
+                                    ? function.underscoresAsBlanks()
+                                            ? m.getName().replace(UNDERSCORE_CHAR, KEYWORD_DELIMITER_CHAR)
+                                            : m.getName()
+                                    : function.name();
 
                     Operator operator = m.getAnnotation(Operator.class);
 
@@ -935,8 +915,7 @@ final class DSLInterpreter
                                     return (p instanceof ParameterRef)
                                             ? view.getSelect(((ParameterRef) p).getValue(), limit, viewFrom.aliased())
                                             : view.getSelect(resolveLabel(aliases, p), limit, viewFrom.aliased());
-                                }
-                                else
+                                } else
                                     return view.getSelect();
                             };
 
@@ -968,7 +947,6 @@ final class DSLInterpreter
 
                             out.setLength(0);
                         }
-
 
                         Stream<CharSequence> args = Streams.zip(pp, argsBuilderBound, (arg,
                                                                                        builder) -> builder.apply(arg));
@@ -1127,8 +1105,8 @@ final class DSLInterpreter
     }
 
     private CharSequence handleView(CharSequence result,
-                                           final Method m,
-                                           List<CharSequence> originalParams) {
+                                    final Method m,
+                                    List<CharSequence> originalParams) {
         if (m.isAnnotationPresent(ViewDeclaration.class)) {
             if (views.isEmpty())
                 views = new HashMap<>();
@@ -1194,8 +1172,7 @@ final class DSLInterpreter
         }
 
         String refName = tableRefs.get(seq);
-        CharSequence tableName = refName != null
-                ? refName == PRIMARY ? resolveTableName(seq, resultType) : refName
+        CharSequence tableName = refName != null ? refName == PRIMARY ? resolveTableName(seq, resultType) : refName
                 : null;
         if (hasLabel && tableName == null)
             tableName = seq instanceof RequiresParenthesesInAS
@@ -1231,21 +1208,21 @@ final class DSLInterpreter
                 return extractColumnName(seq);
 
             if (e instanceof ParameterExpression) {
-            	if (isEntity) {
+                if (isEntity) {
 
-            		switch (renderingContext) {
+                    switch (renderingContext) {
                     case SELECT:
                         if (IdentifierPath.isResolved(seq))
                             break;
                         seq = resolveLabel(aliases, seq);
                         return new StringBuilder(seq).append(DOT + STAR);
-						
+
                     case FROM:
                     case FROM_WITHOUT_ALIAS:
                         return handleFromClause(seq, e, aliases, subQueries);
 
-					default:
-					}
+                    default:
+                    }
                 }
             }
 
@@ -1364,8 +1341,7 @@ final class DSLInterpreter
     public Function<List<Expression>, Function<List<CharSequence>, CharSequence>> visit(NewArrayInitExpression e) {
 
         List<Expression> allArgs = e.getInitializers();
-        Stream<Function<List<Expression>, Function<List<CharSequence>, CharSequence>>> fexprs = allArgs
-                .stream()
+        Stream<Function<List<Expression>, Function<List<CharSequence>, CharSequence>>> fexprs = allArgs.stream()
                 .map(p -> p.accept(this));
 
         return eargs -> {
