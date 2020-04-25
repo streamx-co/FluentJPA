@@ -10,9 +10,9 @@ FluentJPA fills this gap in three ways:
 * naturally extends JPA: use entities in FROM clauses, getters and setters to write expressions, store intermediate calculations in variables, pass them to methods as you usually do to program your business logic. FluentJPA reads all the JPA annotations to retrieve column and table names, then it uses JPA native query for execution. As a result the solution is integrated with JPA pipeline and transaction, calls to JPA and FluentJPA can be freely mixed producing correct results.
 * covers the entire **modern** SQL [DML](https://en.wikipedia.org/wiki/Data_manipulation_language) standard. SQL has changed since SQL-92, where JPQL is stuck: [SQL-99 Common Table Expressions](https://github.com/streamx-co/FluentJPA/wiki/Common-Table-Expressions) (`WITH` clause), [SQL-2003 Window Functions](https://github.com/streamx-co/FluentJPA/wiki/Window-Functions) (`OVER` clause), [SQL-2003 MERGE](https://github.com/streamx-co/FluentJPA/wiki/MERGE) (`UPSERT` clause), [Dynamic Queries](https://github.com/streamx-co/FluentJPA/wiki/Dynamic-Queries) without [Criteria API](https://en.wikibooks.org/wiki/Java_Persistence/Criteria) and many, many more. FluentJPA offers this power as a handy Java library.
 
-## Competition
+<!-- ## Competition
 
-How is FluentJPA different (better) than its competitors, jOOQ in particular? This question [was asked](https://www.reddit.com/r/java/comments/ctu53m/fluentjpa_provides_fluent_api_for_writing/exr9g1t) on Reddit by Mr. Lukas Eder, CEO of Data Geekery GmbH, the developer of jOOQ. Here is [the answer](https://github.com/streamx-co/FluentJPA/wiki/Solving-real-problems), showing how FluentJPA solves real problems.
+How is FluentJPA different (better) than its competitors, jOOQ in particular? This question [was asked](https://www.reddit.com/r/java/comments/ctu53m/fluentjpa_provides_fluent_api_for_writing/exr9g1t) on Reddit by Mr. Lukas Eder, CEO of Data Geekery GmbH, the developer of jOOQ. Here is [the answer](https://github.com/streamx-co/FluentJPA/wiki/Solving-real-problems), showing how FluentJPA solves real problems. -->
 
 ## Setup
 
