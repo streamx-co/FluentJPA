@@ -4,13 +4,13 @@ FluentJPA is a Language Integrated Query (LINQ) technology for relational (SQL) 
 
 ## How does FluentJPA integrate into Java?
 
-At first glance it looks like we need a hook into a Java compiler. But in fact we have full access to the resulting bytecode, which has all the "knowledge" we need. This is the way FluentJPA does its magic - it reads the bytecode and translates to SQL.
+At first glance, it seems that we need a hook in the Java compiler. But in fact, we have full access to the resulting bytecode, which has all the necessary "knowledge". This is how FluentJPA does its magic - it reads the bytecode and translates it into SQL.
 
-As a result the integration is full and FluentJPA supports all the Java language constructs, including functions, variables, etc - anything the compiler can compile and also makes sense in the SQL context. See [Java-Language-Support](https://github.com/streamx-co/FluentJPA/wiki/Java-Language-Support) for details.
+As a result, the integration is full, and FluentJPA supports all Java language constructs, including functions, variables, etc - anything the compiler can compile and also makes sense in the SQL context. See [Java Language Support](https://github.com/streamx-co/FluentJPA/wiki/Java-Language-Support) for details.
 
 ## We already have JPA, JPA repositories and other technologies
 
-> FluentJPA aims to complement JPA where a developer wants a full control over SQL
+> FluentJPA seeks to complement JPA where the developer wants to gain control over SQL
 
 FluentJPA declares SQL clauses (like `SELECT`, `FROM`, `WHERE`) as first class Java methods, so the queries are visually similar:
 
@@ -30,11 +30,11 @@ FROM PERSON_TABLE t0
 WHERE (t0.name = ?)
 ```
 
-As a result, with FluentJPA you can write SQL without loosing type safety, intellisense, refactoring.
+As a result, using FluentJPA you can write SQL without loss of type safety, intellisense, refactoring.
 
 ## JPA Integration
 
-FluentJPA reads JPA annotations to map entities to SQL table names and properties to column names. Then it uses JPA native query for execution. As a result the solution is integrated with JPA pipeline and transactions, calls to JPA and FluentJPA can be freely mixed producing correct results.
+FluentJPA reads JPA annotations to map entities to SQL table names and properties to column names. Then it uses JPA native query for execution. As a result the solution integrates with JPA pipeline and transactions, calls to JPA and FluentJPA can be mixed freely giving the correct results.
 
 ## SQL Support
 
