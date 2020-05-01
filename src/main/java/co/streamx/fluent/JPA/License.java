@@ -235,14 +235,14 @@ class License {
 
     @SneakyThrows
     private static String getFingerprint() {
-        InetAddress localHost = InetAddress.getLocalHost();
+//        InetAddress localHost = InetAddress.getLocalHost();
 
         List<String> addresses = new ArrayList<>();
 
         Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
         while (networkInterfaces.hasMoreElements()) {
             NetworkInterface ni = networkInterfaces.nextElement();
-            if (ni.isLoopback() || !ni.isUp() || ni.isVirtual())
+            if (ni.isLoopback() || !ni.isUp() || ni.isVirtual() || ni.getName().startsWith("docker"))
                 continue;
 
             byte[] mac = ni.getHardwareAddress();
@@ -254,14 +254,13 @@ class License {
                 InetAddress address = inetAddresses.nextElement();
                 if (address.isSiteLocalAddress()) {
                     addresses.add(bytesToHex(mac));
-                    addresses.add(address.getHostAddress());
                     break;
                 }
             }
         }
 
         addresses.sort(null);
-        addresses.add(localHost.getHostName());
+//        addresses.add(localHost.getHostName());
         String fingerprint = addresses.toString();
 
         if (fingerprint.length() < 64) {
