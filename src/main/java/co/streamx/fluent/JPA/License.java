@@ -49,11 +49,7 @@ class License {
 
     private static boolean validateToken(String token,
                                          String fingerprint) {
-        RSAPublicKey publicKey = getPublicKeyFromString(pem);// Get the key instance
-//      RSAPrivateKey privateKey = //Get the key instance
-
-        Algorithm algorithm = Algorithm.RSA256(publicKey, null);
-        JWTVerifier verifier = JWT.require(algorithm).build(); // Reusable verifier instance
+        JWTVerifier verifier = getVerifier();
 
         try {
 
@@ -70,7 +66,7 @@ class License {
                 leat = claims.get("eat");
             Date asDate = leat.asDate();
             long oneHour = TimeUnit.MILLISECONDS.convert(1, TimeUnit.HOURS);
-            boolean expired = asDate.getTime() + oneHour < System.currentTimeMillis();
+            boolean expired = System.currentTimeMillis() >= asDate.getTime() + oneHour;
 
 //      System.out.println(asDate + " expired: " + expired);
 
@@ -89,20 +85,22 @@ class License {
             + "WGx2vsWVOewWhQhkLXFvjtMax1mvo0mZwiTAv4QvY6gLAlO5xARRyyZl/zePgj+A" + "PQIDAQAB";
 
     @SneakyThrows
-    private static RSAPublicKey getPublicKeyFromString(String key) {
-        String publicKeyPEM = key;
+    private static JWTVerifier getVerifier() {
         // publicKeyPEM = publicKeyPEM.replace("-----BEGIN PUBLIC KEY-----", "");
         // publicKeyPEM = publicKeyPEM.replace("-----END PUBLIC KEY-----", "");
-        byte[] encoded = Base64.getDecoder().decode(publicKeyPEM);
+        byte[] encoded = Base64.getDecoder().decode(pem);
         KeyFactory kf = KeyFactory.getInstance("RSA");
-        return (RSAPublicKey) kf.generatePublic(new X509EncodedKeySpec(encoded));
+        RSAPublicKey publicKey = (RSAPublicKey) kf.generatePublic(new X509EncodedKeySpec(encoded));
+
+        Algorithm algorithm = Algorithm.RSA256(publicKey, null);
+        return JWT.require(algorithm).build(); // Reusable verifier instance
     }
 
     @SneakyThrows
     public static void validate(String key) {
 
         Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"));
-        Path tokenFile = tempDir.resolve("fluentjpa.session");
+        Path tokenFile = tempDir.resolve("streamx.session");
         String fingerprint = getFingerprint();
 
         try {
@@ -240,10 +238,9 @@ class License {
         InetAddress localHost = InetAddress.getLocalHost();
 
         List<String> addresses = new ArrayList<>();
-        addresses.add(localHost.getHostName());
 
         Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
-        NI_LOOP: while (networkInterfaces.hasMoreElements()) {
+        while (networkInterfaces.hasMoreElements()) {
             NetworkInterface ni = networkInterfaces.nextElement();
             if (ni.isLoopback() || !ni.isUp() || ni.isVirtual())
                 continue;
@@ -257,12 +254,14 @@ class License {
                 InetAddress address = inetAddresses.nextElement();
                 if (address.isSiteLocalAddress()) {
                     addresses.add(bytesToHex(mac));
-                    addresses.add(address.getHostName());
-                    continue NI_LOOP;
+                    addresses.add(address.getHostAddress());
+                    break;
                 }
             }
         }
 
+        addresses.sort(null);
+        addresses.add(localHost.getHostName());
         String fingerprint = addresses.toString();
 
         if (fingerprint.length() < 64) {
