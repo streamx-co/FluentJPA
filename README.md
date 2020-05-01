@@ -1,18 +1,100 @@
 # Get Back in Control of Your SQL with JPA <div style="float:right">![Patent Pending](https://img.shields.io/badge/patent-pending-informational) [![License](https://img.shields.io/badge/license-LGPL_3.0-success)](LICENSE) ![Java Version](https://img.shields.io/badge/java-%3E%3D%208-success) [![Build Status](https://travis-ci.org/streamx-co/FluentJPA.svg?branch=master)](https://travis-ci.org/streamx-co/FluentJPA) [![Maven Central](https://img.shields.io/maven-central/v/co.streamx.fluent/fluent-jpa?label=maven%20central)](https://search.maven.org/search?q=g:%22co.streamx.fluent%22%20AND%20a:%22fluent-jpa%22)</div>
 
-<!-- [commercial usage](https://fluentjpa.com) -->
+FluentJPA is a Language Integrated Query (LINQ) technology for relational (SQL) databases and JPA. It allows you to use Java to write strongly typed queries by directly integrating into the language.
 
-JPA is a great technology that maps the database relational model to the Java object oriented model. It lets retrieve data and persist back the changes very easily. But it lacks the ability to perform advanced queries. In fact, all the advanced SQL capabilities are simply locked to the Java developer until she chooses to write a hard-to-maintain SQL as a hard-coded string.
+## How does FluentJPA integrate into Java?
 
-FluentJPA fills this gap in three ways:
+At first glance it looks like we need a hook into a Java compiler. But in fact we have full access to the resulting bytecode, which has all the "knowledge" we need. This is the way FluentJPA does its magic - it reads the bytecode and translates to SQL.
 
-* allows you to use Java to write strongly typed queries. We support operators, parameters, variables, methods, etc and translate them to the SQL.
-* naturally extends JPA: use entities in FROM clauses, getters and setters to write expressions, store intermediate calculations in variables, pass them to methods as you usually do to program your business logic. FluentJPA reads all the JPA annotations to retrieve column and table names, then it uses JPA native query for execution. As a result the solution is integrated with JPA pipeline and transaction, calls to JPA and FluentJPA can be freely mixed producing correct results.
-* covers the entire **modern** SQL [DML](https://en.wikipedia.org/wiki/Data_manipulation_language) standard. SQL has changed since SQL-92, where JPQL is stuck: [SQL-99 Common Table Expressions](https://github.com/streamx-co/FluentJPA/wiki/Common-Table-Expressions) (`WITH` clause), [SQL-2003 Window Functions](https://github.com/streamx-co/FluentJPA/wiki/Window-Functions) (`OVER` clause), [SQL-2003 MERGE](https://github.com/streamx-co/FluentJPA/wiki/MERGE) (`UPSERT` clause), [Dynamic Queries](https://github.com/streamx-co/FluentJPA/wiki/Dynamic-Queries) without [Criteria API](https://en.wikibooks.org/wiki/Java_Persistence/Criteria) and many, many more. FluentJPA offers this power as a handy Java library.
+As a result the integration is full and FluentJPA supports all the Java language constructs, including functions, variables, etc - anything the compiler can compile and also makes sense in the SQL context. See [Java-Language-Support](https://github.com/streamx-co/FluentJPA/wiki/Java-Language-Support) for details.
 
-<!-- ## Competition
+## We already have JPA, JPA repositories and other technologies
 
-How is FluentJPA different (better) than its competitors, jOOQ in particular? This question [was asked](https://www.reddit.com/r/java/comments/ctu53m/fluentjpa_provides_fluent_api_for_writing/exr9g1t) on Reddit by Mr. Lukas Eder, CEO of Data Geekery GmbH, the developer of jOOQ. Here is [the answer](https://github.com/streamx-co/FluentJPA/wiki/Solving-real-problems), showing how FluentJPA solves real problems. -->
+> FluentJPA aims to complement JPA where a developer wants a full control over SQL
+
+FluentJPA declares SQL clauses (like `SELECT`, `FROM`, `WHERE`) as first class Java methods, so the queries are visually similar:
+
+```java
+// Java
+FluentJPA.SQL((Person p) -> {
+    SELECT(p);
+    FROM(p);
+    WHERE(p.getName() == name);
+});
+```
+
+```SQL
+-- SQL
+SELECT t0.*
+FROM PERSON_TABLE t0
+WHERE (t0.name = ?)
+```
+
+As a result, with FluentJPA you can write SQL without loosing type safety, intellisense, refactoring.
+
+## JPA Integration
+
+FluentJPA reads JPA annotations to map entities to SQL table names and properties to column names. Then it uses JPA native query for execution. As a result the solution is integrated with JPA pipeline and transactions, calls to JPA and FluentJPA can be freely mixed producing correct results.
+
+## SQL Support
+
+FluentJPA supports the entire **modern** SQL [DML](https://en.wikipedia.org/wiki/Data_manipulation_language) standard. In addition to SQL-92, where JPQL is stuck, it supports [SQL-99 Common Table Expressions](https://github.com/streamx-co/FluentJPA/wiki/Common-Table-Expressions) (`WITH` clause), [SQL-2003 Window Functions](https://github.com/streamx-co/FluentJPA/wiki/Window-Functions) (`OVER` clause), [SQL-2003 MERGE](https://github.com/streamx-co/FluentJPA/wiki/MERGE) (`UPSERT` clause), [Dynamic Queries](https://github.com/streamx-co/FluentJPA/wiki/Dynamic-Queries) without [Criteria API](https://en.wikibooks.org/wiki/Java_Persistence/Criteria) and many, many more.
+
+FluentJPA also supports proprietary SQL extensions provided by the 4 most popular databases, see [static imports](https://github.com/streamx-co/FluentJPA/wiki/Setup#static-imports). Follow links in **Basic/Advanced SQL DML Statements** from the [wiki](https://github.com/streamx-co/FluentJPA/wiki) sidebar to see examples.
+
+* All functions mapped to SQL counterparts follow SQL naming convention - capitals with underscores as delimiters. As a result your code looks like SQL, but *is* Java with intellisense and compiler validation!
+* All helper functions follow standard Java naming convention. They are either [Library](https://github.com/streamx-co/FluentJPA/wiki/Library) methods or [Directives](https://github.com/streamx-co/FluentJPA/wiki/Directives).
+
+<!-- ## Is it same as [Microsoft LINQ](https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/linq/)?
+
+Both technologies let write queries in the platform language (Java, C#) in the most natural way, benefit from intellisense, refactoring and type safety.
+
+But there are also fundamental differences:
+
+- MS LINQ is not similar to SQL, approach that has its pluses and minuses.
+
+-->
+
+## FluentJPA.SQL()
+
+This is an "entry-point" method to the FluentJPA. It accepts a Java lambda and translates it to SQL query. There are few conventions:
+
+* Lambda parameters must be entity types. This way we **declare** the *table references* to be used in this query. Like in SQL, if there is a self join, there will be 2 parameters of the same entity type. For example:
+
+  ```java
+  FluentQuery query = FluentJPA.SQL((Staff emp,
+                                     Staff manager,
+                                     Store store) -> {
+      // returns store name, employee first name and its manager first name
+      // ordered by store and manager
+      SELECT(store.getName(), emp.getFirstName(), manager.getFirstName());
+      FROM(emp).JOIN(manager).ON(emp.getManager() == manager)
+               .JOIN(store).ON(emp.getStore() == store);
+      ORDER(BY(emp.getStore()), BY(emp.getManager()));
+
+  });
+  ```
+
+  > * In Java entity represents SQL Table or more generally a *column set*
+  > * Having entities as parameters makes clear which tables this query works on
+
+* Every time, where SQL expects a table reference (e.g. `FROM`), an entity should be passed. FluentJPA will read the required Table information via JPA annotations.
+
+* FluentJPA translates Lambda's body SQL clauses (written in Java) in the same order as they appear. Thus the content of the sample above is translated to exactly 3 lines:
+
+  ```sql
+  SELECT t2.store_name, t0.first_name, t1.first_name
+  FROM staffs AS t0 INNER JOIN staffs AS t1 ON (t0.manager_id = t1.staff_id) INNER JOIN stores AS t2 ON (t0.store_id = t2.store_id)
+  ORDER BY t0.store_id, t0.manager_id
+  ```
+
+* Finally, call `FluentQuery.createQuery()` to get a standard JPA Query instance (see [JPA Integration](https://github.com/streamx-co/FluentJPA/wiki/JPA-Integration) for details):
+
+  ```java
+  TypedQuery<X> typedQuery = query.createQuery(entityManager, <X>.class);
+  // execute the query
+  typedQuery.getResultList(); // or getSingleResult() / executeUpdate()
+  ```
 
 ## Setup
 
