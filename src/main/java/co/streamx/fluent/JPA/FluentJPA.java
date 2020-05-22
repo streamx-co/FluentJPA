@@ -146,8 +146,8 @@ public final class FluentJPA {
 
     private static FluentQuery SQL(Object fluentQuery) {
 
-        if (!checkLicense())
-            throw TranslationError.REQUIRES_LICENSE.getError(DEBUG_MODE);
+//        if (!checkLicense())
+//            throw TranslationError.REQUIRES_LICENSE.getError(DEBUG_MODE);
 
         LambdaExpression<?> parsed = LambdaExpression.parse(fluentQuery);
 

@@ -319,7 +319,8 @@ class License {
     }
 
     public static void reportNoLicense() {
-        printBanner("Thank you for using FluentJPA!\nNo valid FluentJPA license file was found.\nHappy trial period!");
+        printBanner(
+                "Thank you for using FluentJPA!\nNo valid FluentJPA license file was found.\nFluentJPA is in evaluation period.");
     }
 
     private static void printBanner(String message) {
