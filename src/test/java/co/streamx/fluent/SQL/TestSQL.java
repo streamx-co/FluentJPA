@@ -79,6 +79,7 @@ import co.streamx.fluent.functions.Function0;
 import co.streamx.fluent.functions.Function1;
 import co.streamx.fluent.notation.Capability;
 import co.streamx.fluent.notation.Tuple;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
 
@@ -216,9 +217,8 @@ public class TestSQL implements CommonTest {
 
     private static Long aggregateWindow(NetworkObjectRange netRange,
                                         long agg) {
-        return aggregateBy(agg)
-                .OVER(PARTITION(BY(netRange.getNetworkObject().getId())).ORDER(BY(netRange.getFirst()),
-                        BY(netRange.getLast())));
+        return aggregateBy(agg).OVER(PARTITION(BY(netRange.getNetworkObject().getId())).ORDER(BY(netRange.getFirst()),
+                BY(netRange.getLast())));
     }
 
     public void someMethod(List<String> objectContainerNames,
@@ -267,8 +267,8 @@ public class TestSQL implements CommonTest {
 
             SELECT(net);
             FROM(net).JOIN(objcon).ON(net.getObjectContainer() == objcon);
-            WHERE(IN(objcon.getName(), objectContainerNames) && net.getIpCount().compareTo(maxIpCount) <= 0 &&
-                    IN(net.getObjectInternalType(), objectInternalTypes) && netObjectIds.contains(net.getId()));
+            WHERE(IN(objcon.getName(), objectContainerNames) && net.getIpCount().compareTo(maxIpCount) <= 0
+                    && IN(net.getObjectInternalType(), objectInternalTypes) && netObjectIds.contains(net.getId()));
         };
 
         String expected = "SELECT t0.* "
@@ -425,7 +425,7 @@ public class TestSQL implements CommonTest {
     }
 
     static <T, C> Collection<C> mapToField(T tableRef,
-                                             Function1<T, C> field) {
+                                           Function1<T, C> field) {
 
         return subQuery(() -> {
             SELECT(field.apply(tableRef));
@@ -584,8 +584,7 @@ public class TestSQL implements CommonTest {
     @Test
     public void testInsert1() throws Exception {
         FluentQuery query = FluentJPA.SQL((Films f) -> {
-            INSERT(Modifier.IGNORE).
-            INTO(f);
+            INSERT(Modifier.IGNORE).INTO(f);
             VALUES(row("UA502", "Bananas", 105, "1971-07-13", DEFAULT(), "82 minutes"));
             ON_DUPLICATE_KEY_UPDATE(() -> {
                 f.setTitle(CONCAT(f.getTitle(), "-dup!"));
@@ -717,22 +716,40 @@ public class TestSQL implements CommonTest {
     public void testInsertOnConflictDoNothing() throws Exception {
         FluentQuery query = FluentJPA.SQL((Distributor d) -> {
 
-            INSERT().
-            INTO(viewOf(d, Distributor::getDid, Distributor::getDname));
+            INSERT().INTO(viewOf(d, Distributor::getDid, Distributor::getDname));
             VALUES(row(5, "Gizmo Transglobal"), row(6, "Associated Computing, Inc"));
             ON_CONFLICT(Distributor::getDid).DO_NOTHING();
         });
 
         String expected = "INSERT   INTO  Distributors AS t0 (did, dname)  "
-                + "VALUES (5, 'Gizmo Transglobal'), (6, 'Associated Computing, Inc') "
-                + "ON CONFLICT(did) DO NOTHING";
+                + "VALUES (5, 'Gizmo Transglobal'), (6, 'Associated Computing, Inc') " + "ON CONFLICT(did) DO NOTHING";
 
         assertQuery(query, expected);
+    }
+
+    @Test
+    public void testInsertBatch() throws Exception {
+
+        Distributor d1 = new Distributor("Gizmo Transglobal", 5);
+        Distributor d2 = new Distributor("Associated Computing, Inc", 6);
+        List<Distributor> distributors = Arrays.asList(d1, d2);
+
+        FluentQuery query = FluentJPA.SQL((Distributor d) -> {
+
+            View<Distributor> view = viewOf(d, Distributor::getDid, Distributor::getDname);
+            INSERT().INTO(view);
+            VALUES(view.from(distributors));
+        });
+
+        String expected = "INSERT   INTO  Distributors AS t0 (did, dname)  " + "VALUES (?1, ?2),  (?3, ?4)";
+
+        assertQuery(query, expected, arrayOf(d2.did, d2.dname, d1.did, d1.dname));
     }
 
     @Data
     @Tuple
     @Table(name = "Distributors")
+    @AllArgsConstructor
     public static class Distributor {
         private String dname;
 
@@ -798,8 +815,7 @@ public class TestSQL implements CommonTest {
 
             WITH(upd);
 
-            INSERT().
-            INTO(log);
+            INSERT().INTO(log);
             SELECT(upd.getId(), CURRENT_TIMESTAMP());
             FROM(upd);
         });

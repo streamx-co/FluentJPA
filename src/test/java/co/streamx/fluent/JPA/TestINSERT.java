@@ -14,6 +14,9 @@ import static co.streamx.fluent.SQL.SQL.WHERE;
 import static co.streamx.fluent.SQL.SQL.row;
 import static co.streamx.fluent.SQL.ScalarFunctions.WHEN;
 
+import java.util.Arrays;
+import java.util.List;
+
 import javax.persistence.AttributeOverride;
 import javax.persistence.Column;
 import javax.persistence.Table;
@@ -21,6 +24,7 @@ import javax.persistence.Table;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import co.streamx.fluent.SQL.View;
 import co.streamx.fluent.SQL.Oracle.InsertModifier;
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;
@@ -157,6 +161,35 @@ public class TestINSERT implements CommonTest {
         String expected = "INSERT   INTO  orders t0 (order_total, customer_id)  " + "VALUES (?1, ?2)";
 
         Object[] args = { orderTotal, customer };
+        assertQuery(query, expected, args);
+    }
+
+    @Test
+    public void testInsertMulti() throws Exception {
+
+        int orderTotal = 123;
+        int customer = 5;
+
+        Order order1 = new Order();
+        order1.setOrderTotal(2);
+        order1.setCustomerId(4);
+
+        Order order2 = new Order();
+        order2.setOrderTotal(23);
+        order2.setCustomerId(43);
+
+        List<Order> orders = Arrays.asList(order1, order2);
+
+        FluentQuery query = FluentJPA.SQL((Order o) -> {
+
+            View<Order> set = viewOf(o, Order::getOrderTotal, Order::getCustomerId);
+            INSERT().INTO(set);
+            VALUES(set.from(orders));
+        });
+
+        String expected = "INSERT   INTO  orders t0 (order_total, customer_id)  " + "VALUES (?1, ?2),  (?3, ?4)";
+
+        Object[] args = { 23, 43, 2, 4 };
         assertQuery(query, expected, args);
     }
 

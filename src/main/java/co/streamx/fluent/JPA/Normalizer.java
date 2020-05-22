@@ -33,7 +33,6 @@ import co.streamx.fluent.notation.Notation;
 import co.streamx.fluent.notation.ViewDeclaration;
 import lombok.SneakyThrows;
 
-
 class Normalizer extends SimpleExpressionVisitor {
     private static final String COMPARE_TO = "compareTo";
     private final Method compareToMethod;
@@ -44,7 +43,7 @@ class Normalizer extends SimpleExpressionVisitor {
 
     @SneakyThrows
     private Normalizer() {
-            compareToMethod = Comparable.class.getMethod(COMPARE_TO, Object.class);
+        compareToMethod = Comparable.class.getMethod(COMPARE_TO, Object.class);
     }
 
     private static boolean isFunctionalInterfaceCall(Member member) {
@@ -86,7 +85,13 @@ class Normalizer extends SimpleExpressionVisitor {
             return super.visit(e);
 
         if (Modifier.isStatic(method.getModifiers()) || method.isDefault()) {
-            LambdaExpression<?> parsed = LambdaExpression.parseMethod(method, e.getInstance());
+            Expression instance = e.getInstance();
+            LambdaExpression<?> parsed = LambdaExpression.parseMethod(method, instance);
+            if (instance != null) {
+                List<Expression> args = getContextArguments();
+                if (!args.isEmpty())
+                    args.add(0, instance.accept(this));
+            }
             return visit(parsed);
         }
 
@@ -103,27 +108,6 @@ class Normalizer extends SimpleExpressionVisitor {
     }
 
     @Override
-    protected Expression invoke(InvocableExpression target,
-                                List<Expression> args,
-                                InvocationExpression original) {
-        InvocableExpression originalTarget = original.getTarget();
-        if (target instanceof LambdaExpression && originalTarget instanceof MemberExpression) {
-            // was parsed. Potentially requires passing instance as 1st parameter
-            if (target.getParameters().size() > originalTarget.getParameters().size()) {
-                MemberExpression member = (MemberExpression) originalTarget;
-                Expression instance = member.getInstance();
-                if (instance != null) {
-                    List<Expression> newArgs = new ArrayList<>(args.size() + 1);
-                    newArgs.add(instance.accept(this));
-                    newArgs.addAll(args);
-                    args = newArgs;
-                }
-            }
-        }
-        return super.invoke(target, args, original);
-    }
-
-    @Override
     public Expression visit(InvocationExpression e) {
         InvocableExpression target = e.getTarget();
         if (!(target instanceof MemberExpression))
@@ -137,7 +121,8 @@ class Normalizer extends SimpleExpressionVisitor {
         Executable method = (Executable) member;
 
         if (method.isAnnotationPresent(Local.class)) {
-            Object result = LambdaExpression.compile(e).apply(contextArgumentsArray(e.getArguments()));
+            Object result = LambdaExpression.compile(target)
+                    .apply(new Object[] { null, contextArgumentsArray(e.getArguments()) });
             boolean isSynthetic = result != null && isFunctional(result.getClass());
             if (isSynthetic) {
                 LambdaExpression<?> parsed = LambdaExpression.parse(result);
@@ -200,19 +185,17 @@ class Normalizer extends SimpleExpressionVisitor {
     private Object[] contextArgumentsArray(List<Expression> args) {
         if (args.isEmpty())
             return null;
-        List<Expression> contextArguments = getContextArguments();
-        return args.stream()
-                .map(e -> {
-                    Expression x = removeCast(e);
-                    if (x instanceof ParameterExpression)
-                        x = contextArguments.get(((ParameterExpression) x).getIndex());
 
-                    if (!(x instanceof ConstantExpression))
-                        throw TranslationError.REQUIRES_EXTERNAL_PARAMETER.getError(x);
+        return args.stream().map(e -> {
+            Expression x = removeCast(e);
+            if (x instanceof ParameterExpression)
+                x = resolveContextParameter((ParameterExpression) x);
 
-                    return ((ConstantExpression) x).getValue();
-                })
-                .toArray();
+            if (!(x instanceof ConstantExpression))
+                throw TranslationError.REQUIRES_EXTERNAL_PARAMETER.getError(x);
+
+            return ((ConstantExpression) x).getValue();
+        }).toArray();
     }
 
     private static Expression removeCast(Expression x) {
@@ -252,7 +235,7 @@ class Normalizer extends SimpleExpressionVisitor {
     }
 
     private Expression createComparison(int expressionType,
-                                               Expression e) {
+                                        Expression e) {
         InvocationExpression ie = (InvocationExpression) e;
         MemberExpression m = (MemberExpression) ie.getTarget();
         return Expression.binary(expressionType, m.getInstance(), ie.getArguments().get(0));
