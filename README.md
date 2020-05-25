@@ -138,7 +138,7 @@ WHERE (t0.name = ?)
 
 FluentJPA supports _**any**_ query, here we brought few examples with sub queries to show the power of FluentJPA. There is a link to the test file source code and a link to the original SQL where we borrowed the use case from. Best when seen side-by-side.
 
-### Example 1 - [testCorrelatedWithHaving()](src/test/java/co/streamx/fluent/JPA/testSELECT.java#L161-L186)
+### Example 1 - [testCorrelatedWithHaving()](src/test/java/co/streamx/fluent/JPA/TestSELECT.java#L163-L188)
 
 **1 sub query "converted" to a Java function** (original SQL comes from [SQL Server documentation](https://docs.microsoft.com/en-us/sql/t-sql/queries/select-examples-transact-sql?view=sql-server-2017#e-using-correlated-subqueries)).
 
@@ -167,7 +167,7 @@ private static int avgPriceForProductModel(ProductModel model) {
 }
 ```
 
-### Example 2 - [testInsertFromOUTPUT()](src/test/java/co/streamx/fluent/JPA/testMERGE.java#L124-L198)
+### Example 2 - [testInsertFromOUTPUT()](src/test/java/co/streamx/fluent/JPA/TestMERGE.java#L121-L198)
 
 **3 sub queries "converted" to functions** (original SQL comes from [SQL Server documentation](https://docs.microsoft.com/en-us/sql/t-sql/queries/output-clause-transact-sql#k-inserting-data-returned-from-an-output-clause)).
 
@@ -243,7 +243,7 @@ private static void trackNoInventory(Change change) {
 
 ```
 
-### Example 3 - [testCTE_Recursive_DELETE()](src/test/java/co/streamx/fluent/SQL/TestSQL.java#L443-L468)
+### Example 3 - [testCTE_Recursive_DELETE()](src/test/java/co/streamx/fluent/SQL/TestSQL.java#L445-L472)
 
 **Recursive sub query** (original SQL comes from [PostgreSQL documentation](https://www.postgresql.org/docs/current/queries-with.html)).
 
