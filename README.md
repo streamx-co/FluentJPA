@@ -4,7 +4,7 @@ FluentJPA is a Language Integrated Query (LINQ) technology for relational (SQL) 
 
 ## How does FluentJPA integrate into Java?
 
-At first glance, it seems that we need a hook in the Java compiler. But in fact, we have full access to the resulting bytecode, which has all the necessary "knowledge". This is how FluentJPA does its magic - it reads the bytecode and translates it into SQL.
+At first glance, it seems that we need a hook in the Java compiler. But in fact, we have full access to the compiled bytecode, which has all the necessary "knowledge". This is how FluentJPA does its magic - it reads the bytecode and translates it to SQL.
 
 As a result, the integration is full, and FluentJPA supports all Java language constructs, including functions, variables, etc - anything the compiler can compile and also makes sense in the SQL context. See [Java Language Support](https://github.com/streamx-co/FluentJPA/wiki/Java-Language-Support) for details.
 
@@ -317,9 +317,9 @@ private Function1<CoverageMaster, Boolean> buildOr1(List<String> likes) {
 
 ## License
 
-Fluent JPA is licensed based on number of active (floating) developers. The product comes with 1-3 years of support and upgrades, but the license is perpetual (indefinitely usable). Therefore you are not required to renew your licence annually or to renew it at all, [more details](https://fluentjpa.com/pricing-faq).
-
 > This work is dual-licensed under [Affero GPL 3.0](https://opensource.org/licenses/AGPL-3.0) and [Lesser GPL 3.0](https://opensource.org/licenses/LGPL-3.0).
-The source code is licensed under AGPL and official binaries under LGPL.
+The source code is licensed under AGPL and [official binaries](https://search.maven.org/search?q=g:%22co.streamx.fluent%22%20AND%20a:%22fluent-jpa%22) under LGPL.
+
+Therefore the library can be used in commercial projects.
 
 `SPDX-License-Identifier: AGPL-3.0-only AND LGPL-3.0-only`
