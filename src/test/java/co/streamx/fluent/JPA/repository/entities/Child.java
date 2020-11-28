@@ -39,8 +39,8 @@ public class Child {
     private int index;
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
-    @JoinColumns({ @JoinColumn(name = "code", insertable = false, updatable = false),
-            @JoinColumn(name = "id", insertable = false, updatable = false) })
+    @JoinColumns({ @JoinColumn(name = "code", insertable = false, updatable = false, referencedColumnName="\"co de\""),
+            @JoinColumn(name = "id", insertable = false, updatable = false, referencedColumnName="id") })
     private Parent parent;
 
     @SuppressWarnings("serial")
