@@ -9,6 +9,8 @@ jdk:
   - oraclejdk12
   - oraclejdk13
   - oraclejdk14
+  - oraclejdk15
+  - oraclejdk16
   - openjdk8
   - openjdk9
   - openjdk10
@@ -16,3 +18,5 @@ jdk:
   - openjdk12
   - openjdk13
   - openjdk14
+  - openjdk15
+  - openjdk16
