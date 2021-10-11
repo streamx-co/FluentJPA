@@ -1,10 +1,11 @@
-package co.streamx.fluent.JPA.spi;
+package co.streamx.fluent.JPA.spi.impl;
 
 import java.lang.reflect.Executable;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import co.streamx.fluent.JPA.spi.SQLConfigurator;
 import co.streamx.fluent.extree.expression.Expression;
 import co.streamx.fluent.extree.expression.InvocationExpression;
 import co.streamx.fluent.extree.expression.LambdaExpression;

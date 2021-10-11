@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import co.streamx.fluent.JPA.spi.SQLConfiguratorImpl;
+import co.streamx.fluent.JPA.spi.impl.SQLConfiguratorImpl;
 import co.streamx.fluent.extree.expression.BinaryExpression;
 import co.streamx.fluent.extree.expression.ConstantExpression;
 import co.streamx.fluent.extree.expression.Expression;

@@ -1,4 +1,4 @@
-package co.streamx.fluent.JPA.spi;
+package co.streamx.fluent.JPA.spi.impl;
 
 import java.sql.Time;
 import java.sql.Timestamp;
@@ -9,6 +9,8 @@ import java.time.temporal.Temporal;
 import java.util.Date;
 import java.util.ServiceLoader;
 
+import co.streamx.fluent.JPA.spi.JPAConfiguration;
+import co.streamx.fluent.JPA.spi.SQLConfigurator;
 import co.streamx.fluent.functions.Function0;
 import co.streamx.fluent.functions.Function1;
 import co.streamx.fluent.functions.Function2;
