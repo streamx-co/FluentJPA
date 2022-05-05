@@ -1,4 +1,4 @@
-package co.streamx.fluent.JPA;
+/*package co.streamx.fluent.JPA;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -337,3 +337,4 @@ class License {
         System.out.println();
     }
 }
+*/
