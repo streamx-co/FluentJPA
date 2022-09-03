@@ -31,13 +31,17 @@ public interface EmployeeManagerRepo extends JpaRepository<EmployeeManager, Inte
         private String manager;
     }
 
+    static String GetFullName(EmployeeManager em) {
+        return CONCAT(em.getFirstName(), " ", em.getLastName());
+    }
+
     default List<EmployeeManagerPair> getEManagers() {
         FluentQuery sql = FluentJPA.SQL((EmployeeManager e,
                                          EmployeeManager m) -> {
 
-            String manager = alias(CONCAT(m.getFirstName(), " ", m.getLastName()), EmployeeManagerPair::getManager);
+            String manager = alias(GetFullName(m), EmployeeManagerPair::getManager);
 
-            SELECT(alias(CONCAT(e.getFirstName(), " ", e.getLastName()), EmployeeManagerPair::getEmployee), manager);
+            SELECT(alias(GetFullName(e), EmployeeManagerPair::getEmployee), manager);
             FROM(e).JOIN(m).ON(e.getManager() == m);
             ORDER(BY(manager));
 
