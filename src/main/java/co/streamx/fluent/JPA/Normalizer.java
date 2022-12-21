@@ -35,15 +35,15 @@ import lombok.SneakyThrows;
 
 class Normalizer extends SimpleExpressionVisitor {
     private static final String COMPARE_TO = "compareTo";
-    private final Method compareToMethod;
+    private static final Method compareToMethod = initializeCompareToMethod();
 
     public static Normalizer get() {
         return new Normalizer();
     }
 
     @SneakyThrows
-    private Normalizer() {
-        compareToMethod = Comparable.class.getMethod(COMPARE_TO, Object.class);
+    private static Method initializeCompareToMethod() {
+        return Comparable.class.getMethod(COMPARE_TO, Object.class);
     }
 
     private static boolean isFunctionalInterfaceCall(Member member) {
