@@ -12,7 +12,7 @@ As a result, the integration is full, and FluentJPA supports all Java language c
 
 > FluentJPA seeks to complement JPA where the developer wants to gain control over SQL
 
-FluentJPA declares SQL clauses (like `SELECT`, `FROM`, `WHERE`) as first class Java methods, so the queries are visually similar:
+If ORM aims to solve the problem of mapping the database schema into the Java object model; FluentJPA aims to allow writing SQL queries in Java using this object model. FluentJPA declares SQL clauses (like `SELECT`, `FROM`, `WHERE`) as first class Java methods, so the queries are visually similar:
 
 ```java
 // Java
