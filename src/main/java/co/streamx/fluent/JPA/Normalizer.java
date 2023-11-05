@@ -153,12 +153,12 @@ class Normalizer extends SimpleExpressionVisitor {
             }
         }
 
-        Expression visited = super.visit(e);
+        InvocationExpression visited = (InvocationExpression) super.visit(e);
         if (method.isAnnotationPresent(ViewDeclaration.class)) {
 
-            Expression entity = e.getArguments().get(0);
+            Expression entity = visited.getArguments().get(0);
             List<Expression> args = Collections.singletonList(entity);
-            NewArrayInitExpression aliases = (NewArrayInitExpression) e.getArguments().get(1);
+            NewArrayInitExpression aliases = (NewArrayInitExpression) visited.getArguments().get(1);
             List<Expression> resolvedAliases = aliases.getInitializers()
                     .stream()
                     .map(ex -> Expression.invoke((LambdaExpression<?>) ex, args))
@@ -169,6 +169,11 @@ class Normalizer extends SimpleExpressionVisitor {
 
         }
         return visited;
+    }
+
+    @Override
+    public Expression visit(LambdaExpression<?> e) {
+        return super.visit(e.parseMethodRef());
     }
 
     private static boolean isFunctional(Class<?> clazz) {

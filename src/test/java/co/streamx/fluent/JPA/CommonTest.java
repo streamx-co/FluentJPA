@@ -35,9 +35,10 @@ public interface CommonTest {
 
     default <T> T[] reverse(T[] array) {
         for (int i = 0; i < array.length / 2; i++) {
+            int j = array.length - i - 1;
             T temp = array[i];
-            array[i] = array[array.length - i - 1];
-            array[array.length - i - 1] = temp;
+            array[i] = array[j];
+            array[j] = temp;
         }
 
         return array;

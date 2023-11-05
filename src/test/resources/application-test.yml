@@ -18,4 +18,4 @@ spring:
         console:
             enabled: false
     datasource:
-        url: jdbc:h2:mem:db1;MODE=PostgreSQL
+        url: jdbc:h2:mem:db1;MODE=MSSQLServer

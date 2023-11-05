@@ -82,14 +82,14 @@
 		<dependency>
             <groupId>org.junit.platform</groupId>
             <artifactId>junit-platform-commons</artifactId>
-            <version>${junit-platform.version}</version>
+            <!--<version>${junit-platform.version}</version>-->
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.platform</groupId>
             <artifactId>junit-platform-launcher</artifactId>
             <!-- Override Spring-Boot choice for Eclipse -->
-            <version>${junit-platform.version}</version>
+            <!--<version>${junit-platform.version}</version>-->
             <scope>test</scope>
         </dependency>
 		<dependency>
@@ -117,6 +117,10 @@
 				<exclusion>
 					<groupId>junit</groupId>
 					<artifactId>junit</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.junit.vintage</groupId>
+					<artifactId>junit-vintage-engine</artifactId>
 				</exclusion>
 			</exclusions>
 		</dependency>
@@ -172,13 +176,13 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.22.2</version>
+				<version>3.1.2</version>
 			</plugin>
 
 			<plugin>
 				<groupId>org.sonatype.plugins</groupId>
 				<artifactId>nexus-staging-maven-plugin</artifactId>
-				<version>1.6.8</version>
+				<version>1.6.13</version>
 				<extensions>true</extensions>
 				<configuration>
 					<serverId>ossrh</serverId>
@@ -190,6 +194,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-release-plugin</artifactId>
+				<version>3.0.1</version>
 				<configuration>
 					<autoVersionSubmodules>true</autoVersionSubmodules>
 					<useReleaseProfile>false</useReleaseProfile>
@@ -201,12 +206,12 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-site-plugin</artifactId>
-				<version>3.7.1</version>
+				<version>4.0.0-M11</version>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-project-info-reports-plugin</artifactId>
-				<version>3.0.0</version>
+				<version>3.4.5</version>
 			</plugin>
 		</plugins>
 	</build>
@@ -250,7 +255,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-source-plugin</artifactId>
-						<version>3.2.1</version>
+						<version>3.3.0</version>
 						<executions>
 							<execution>
 								<id>attach-sources</id>
@@ -281,7 +286,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-gpg-plugin</artifactId>
-						<version>1.6</version>
+						<version>3.1.0</version>
 						<executions>
 							<execution>
 								<id>sign-artifacts</id>
@@ -311,10 +316,9 @@
   </reporting>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<spring.boot.version>2.1.8.RELEASE</spring.boot.version>
-		<junit-platform.version>1.5.2</junit-platform.version>
-		<flyway.version>5.2.4</flyway.version>
-		<ex-tree.version>2.7.4</ex-tree.version>
+		<spring.boot.version>2.7.17</spring.boot.version>
+		<flyway.version>9.21.0</flyway.version>
+		<ex-tree.version>2.8.0</ex-tree.version>
 		<jpa-notations.version>1.0.14</jpa-notations.version>
 		<sql-grammar.version>1.0.17</sql-grammar.version>
 		<jwt.version>3.10.1</jwt.version>

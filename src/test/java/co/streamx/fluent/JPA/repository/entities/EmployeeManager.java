@@ -11,7 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-@Entity(name = "Employee")
+@Entity(name = "EmployeeManager")
 @Table(name = "employee_man")
 @Data
 @AllArgsConstructor

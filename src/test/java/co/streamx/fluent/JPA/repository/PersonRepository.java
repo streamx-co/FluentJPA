@@ -13,6 +13,7 @@ import java.util.List;
 
 import javax.persistence.EntityManager;
 
+import co.streamx.fluent.notation.Function;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
@@ -53,6 +54,12 @@ public interface PersonRepository extends CrudRepository<Person, Long>, EntityMa
 
         return query.createQuery(getEntityManager(), Person.class).getResultList();
     }
+    @Function(
+            underscoresAsBlanks = false
+    )
+    static long SCOPE_IDENTITY() {
+        throw new UnsupportedOperationException();
+    }
 
     default Person insertDefault(String name,
                                  int age) {
@@ -73,7 +80,7 @@ public interface PersonRepository extends CrudRepository<Person, Long>, EntityMa
         query = FluentJPA.SQL((Person p) -> {
             SELECT(p);
             FROM(p);
-            WHERE(p.getId() == LAST_INSERT_ID());
+            WHERE(p.getId() == SCOPE_IDENTITY());
         });
 
         Person person = query.createQuery(getEntityManager(), Person.class).getSingleResult();
