@@ -31,7 +31,7 @@ import co.streamx.fluent.notation.Literal;
 import co.streamx.fluent.notation.Local;
 import co.streamx.fluent.notation.Notation;
 import co.streamx.fluent.notation.ViewDeclaration;
-import lombok.SneakyThrows;
+//import lombok.SneakyThrows;
 
 class Normalizer extends SimpleExpressionVisitor {
     private static final String COMPARE_TO = "compareTo";
@@ -41,9 +41,13 @@ class Normalizer extends SimpleExpressionVisitor {
         return new Normalizer();
     }
 
-    @SneakyThrows
+//    @SneakyThrows
     private static Method initializeCompareToMethod() {
-        return Comparable.class.getMethod(COMPARE_TO, Object.class);
+        try {
+            return Comparable.class.getMethod(COMPARE_TO, Object.class);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static boolean isFunctionalInterfaceCall(Member member) {
@@ -53,7 +57,7 @@ class Normalizer extends SimpleExpressionVisitor {
     }
 
     @Override
-    @SneakyThrows
+//    @SneakyThrows
     public Expression visit(MemberExpression e) {
         Member member = e.getMember();
 

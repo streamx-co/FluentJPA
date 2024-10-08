@@ -65,7 +65,7 @@
 			<artifactId>slf4j-api</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>org.hibernate</groupId>
+			<groupId>org.hibernate.orm</groupId>
 			<artifactId>hibernate-core</artifactId>
 			<scope>provided</scope>
 		</dependency>
@@ -93,14 +93,14 @@
             <scope>test</scope>
         </dependency>
 		<dependency>
-		  <groupId>javax.persistence</groupId>
-		  <artifactId>javax.persistence-api</artifactId>
+		  <groupId>jakarta.persistence</groupId>
+		  <artifactId>jakarta.persistence-api</artifactId>
 		  <scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<version>1.18.30</version>
+			<version>1.18.34</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
@@ -167,16 +167,16 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.8.1</version>
+<!--				<version>3.8.1</version>-->
 				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
+					<source>11</source>
+					<target>11</target>
 				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.1.2</version>
+<!--				<version>3.1.2</version>-->
 			</plugin>
 
 			<plugin>
@@ -194,7 +194,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-release-plugin</artifactId>
-				<version>3.0.1</version>
+<!--				<version>3.0.1</version>-->
 				<configuration>
 					<autoVersionSubmodules>true</autoVersionSubmodules>
 					<useReleaseProfile>false</useReleaseProfile>
@@ -206,12 +206,12 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-site-plugin</artifactId>
-				<version>4.0.0-M11</version>
+<!--				<version>4.0.0-M11</version>-->
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-project-info-reports-plugin</artifactId>
-				<version>3.4.5</version>
+<!--				<version>3.4.5</version>-->
 			</plugin>
 		</plugins>
 	</build>
@@ -255,7 +255,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-source-plugin</artifactId>
-						<version>3.3.0</version>
+<!--						<version>3.3.0</version>-->
 						<executions>
 							<execution>
 								<id>attach-sources</id>
@@ -268,7 +268,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-javadoc-plugin</artifactId>
-						<version>3.4.1</version>
+<!--						<version>3.4.1</version>-->
 						<configuration>
 							<links>
 								<link>http://docs.oracle.com/javase/8/docs/api</link>
@@ -286,7 +286,7 @@
 					<plugin>
 						<groupId>org.apache.maven.plugins</groupId>
 						<artifactId>maven-gpg-plugin</artifactId>
-						<version>3.1.0</version>
+<!--						<version>3.1.0</version>-->
 						<executions>
 							<execution>
 								<id>sign-artifacts</id>
@@ -316,9 +316,9 @@
   </reporting>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<spring.boot.version>2.7.17</spring.boot.version>
+		<spring.boot.version>3.3.4</spring.boot.version>
 		<flyway.version>9.21.0</flyway.version>
-		<ex-tree.version>2.8.0</ex-tree.version>
+		<ex-tree.version>2.8.4</ex-tree.version>
 		<jpa-notations.version>1.0.14</jpa-notations.version>
 		<sql-grammar.version>1.0.17</sql-grammar.version>
 		<jwt.version>3.10.1</jwt.version>

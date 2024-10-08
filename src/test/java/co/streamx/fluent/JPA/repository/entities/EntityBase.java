@@ -1,7 +1,7 @@
 package co.streamx.fluent.JPA.repository.entities;
 
-import javax.persistence.Id;
-import javax.persistence.MappedSuperclass;
+import jakarta.persistence.Id;
+import jakarta.persistence.MappedSuperclass;
 
 import lombok.Data;
 

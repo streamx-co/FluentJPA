@@ -2,7 +2,7 @@ package co.streamx.fluent.JPA.vendor;
 
 import java.util.List;
 
-import javax.persistence.Query;
+import jakarta.persistence.Query;
 
 import org.hibernate.query.NativeQuery;
 import org.hibernate.transform.ResultTransformer;

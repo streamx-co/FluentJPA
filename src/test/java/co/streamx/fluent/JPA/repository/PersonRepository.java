@@ -11,7 +11,7 @@ import static co.streamx.fluent.SQL.SQL.row;
 
 import java.util.List;
 
-import javax.persistence.EntityManager;
+import jakarta.persistence.EntityManager;
 
 import co.streamx.fluent.notation.Function;
 import org.springframework.data.repository.CrudRepository;

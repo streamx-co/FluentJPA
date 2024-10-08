@@ -1,6 +1,6 @@
 package co.streamx.fluent.JPA.vendor;
 
-import javax.persistence.Query;
+import jakarta.persistence.Query;
 
 public interface ResultTransformerInstaller {
     void install(Query query,

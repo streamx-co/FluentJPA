@@ -1,6 +1,7 @@
 package co.streamx.fluent.JPA;
 
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
@@ -13,15 +14,15 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import javax.persistence.MapsId;
-import javax.persistence.Transient;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.Transient;
 
 import co.streamx.fluent.JPA.JPAHelpers.Association;
 import co.streamx.fluent.JPA.JPAHelpers.ClassMeta;
 import co.streamx.fluent.JPA.JPAHelpers.ID;
 import co.streamx.fluent.JPA.vendor.TupleResultTransformer;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
+//import lombok.SneakyThrows;
 
 @RequiredArgsConstructor
 class TupleResultTransformerImpl<T> implements TupleResultTransformer<T>, TupleResultTransformerImplHelpers {
@@ -109,10 +110,15 @@ class TupleResultTransformerImpl<T> implements TupleResultTransformer<T>, TupleR
      * @param aliases The result aliases ("parallel" array to tuple)
      * @return The transformed row.
      */
-    @SneakyThrows
+//    @SneakyThrows
     public T transformTuple(Object[] tuple,
                             String[] aliases) {
-        T x = targetType.newInstance();
+        T x = null;
+        try {
+            x = targetType.newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
 
         for (int i = 0; i < tuple.length; i++) {
 
@@ -127,7 +133,11 @@ class TupleResultTransformerImpl<T> implements TupleResultTransformer<T>, TupleR
             PropertyInfo info = aliasesToMethods.get(alias.toUpperCase(Locale.ROOT));
             if (info == null)
                 throw new IndexOutOfBoundsException("Alias '" + alias + "' for column " + i + " not found");
-            info.getSetter().set(x, defaultConvert(value, info.getSetter().getType()));
+            try {
+                info.getSetter().set(x, defaultConvert(value, info.getSetter().getType()));
+            } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         return x;

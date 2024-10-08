@@ -12,9 +12,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.math.BigInteger;
 import java.util.List;
 
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
-import javax.transaction.Transactional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -94,9 +94,9 @@ public class JPAAnnotationsTest extends IntegrationTest implements JPAAnnotation
 
         });
 
-        javax.persistence.Tuple actual = query.createQuery(em, javax.persistence.Tuple.class).getSingleResult();
-        BigInteger integer = actual.get("length", BigInteger.class);
-        assertEquals(BigInteger.valueOf(7), integer);
+        jakarta.persistence.Tuple actual = query.createQuery(em, jakarta.persistence.Tuple.class).getSingleResult();
+        Long integer = actual.get("length", Long.class);
+        assertEquals(Long.valueOf(7), integer);
 
         MyTuple tuple = query.createQuery(em, MyTuple.class).getSingleResult();
         assertEquals("4 Hey!", tuple.getHey());

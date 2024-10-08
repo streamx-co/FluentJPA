@@ -21,7 +21,7 @@ import static co.streamx.fluent.SQL.SQL.WHERE;
 
 import java.util.Date;
 
-import javax.persistence.Table;
+import jakarta.persistence.Table;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

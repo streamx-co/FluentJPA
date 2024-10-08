@@ -8,8 +8,8 @@ import static co.streamx.fluent.SQL.SQL.WHERE;
 
 import java.util.List;
 
-import javax.persistence.Column;
-import javax.persistence.TypedQuery;
+import jakarta.persistence.Column;
+import jakarta.persistence.TypedQuery;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

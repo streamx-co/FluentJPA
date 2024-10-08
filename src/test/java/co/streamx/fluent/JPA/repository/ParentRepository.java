@@ -5,7 +5,7 @@ import static co.streamx.fluent.SQL.SQL.SELECT;
 
 import java.util.List;
 
-import javax.persistence.EntityManager;
+import jakarta.persistence.EntityManager;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

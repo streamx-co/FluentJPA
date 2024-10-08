@@ -19,30 +19,30 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import javax.persistence.AccessType;
-import javax.persistence.AttributeOverride;
-import javax.persistence.AttributeOverrides;
-import javax.persistence.CollectionTable;
-import javax.persistence.Column;
-import javax.persistence.ElementCollection;
-import javax.persistence.Embeddable;
-import javax.persistence.Embedded;
-import javax.persistence.EmbeddedId;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Inheritance;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinColumns;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.MapsId;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
-import javax.persistence.PrimaryKeyJoinColumn;
-import javax.persistence.SecondaryTable;
-import javax.persistence.SecondaryTables;
-import javax.persistence.Table;
+import jakarta.persistence.AccessType;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrimaryKeyJoinColumn;
+import jakarta.persistence.SecondaryTable;
+import jakarta.persistence.SecondaryTables;
+import jakarta.persistence.Table;
 
 import co.streamx.fluent.extree.expression.Expression;
 import co.streamx.fluent.extree.expression.InvocationExpression;
@@ -62,8 +62,8 @@ final class JPAHelpers {
     private static final Map<Member, Field> membersToFields = new ConcurrentHashMap<>();
 
     // https://stackoverflow.com/questions/3473756/java-convert-primitive-class/17836370
-    private static final Class<?>[] wrappers = { Integer.class, Double.class, Byte.class, Boolean.class,
-            Character.class, Void.class, Short.class, Float.class, Long.class };
+    private static final Class<?>[] wrappers = {Integer.class, Double.class, Byte.class, Boolean.class,
+            Character.class, Void.class, Short.class, Float.class, Long.class};
 
     @SuppressWarnings("unchecked")
     public static <T> Class<T> wrap(final Class<T> clazz) {
@@ -80,7 +80,9 @@ final class JPAHelpers {
     private interface SneakyBiFunction<T, U, R> {
         R apply(T t,
                 U u) throws Exception;
-    };
+    }
+
+    ;
 
     @Getter
     @RequiredArgsConstructor
@@ -184,7 +186,7 @@ final class JPAHelpers {
 
         throw new IllegalStateException(
                 String.format("Cannot bind association for [(%s)%s = (%s)%s]. Ensure both sides are entities.",
-                left.getResultType().getSimpleName(), left, right.getResultType().getSimpleName(), right));
+                        left.getResultType().getSimpleName(), left, right.getResultType().getSimpleName(), right));
     }
 
     private static Association getAssociation(InvocationExpression e,
@@ -388,8 +390,7 @@ final class JPAHelpers {
                 field = resolveMappedBy(getTargetForMTM(field), mappedBy);
                 leftField = (AnnotatedElement) field;
                 inverse = !inverse;
-            }
-            else if (inverse) {
+            } else if (inverse) {
                 declaringClass = manyToMany.targetEntity();
                 if (declaringClass == void.class)
                     declaringClass = getTargetByParameterizedType(field);
@@ -468,7 +469,7 @@ final class JPAHelpers {
             JoinColumn[] joins;
             JoinColumn joinColumn = leftField.getAnnotation(JoinColumn.class);
             if (joinColumn != null)
-                joins = new JoinColumn[] { joinColumn };
+                joins = new JoinColumn[]{joinColumn};
             else {
                 JoinColumns joinColumns = leftField.getAnnotation(JoinColumns.class);
                 joins = joinColumns != null ? joinColumns.value() : null;
@@ -514,7 +515,9 @@ final class JPAHelpers {
                 }
 
                 other = Streams.map(getClassMeta(type).getIds(), ID::getColumn);
-                that = Collections.singletonList(concatWithUnderscore(getColumnName(field), other.get(0)));
+                that = Collections.singletonList(isEmbeddable(field.getDeclaringClass()) ?
+                        getColumnName(field) :
+                        concatWithUnderscore(getColumnName(field), other.get(0)));
             }
 
             return new Association(that, other, left);
@@ -546,8 +549,8 @@ final class JPAHelpers {
     }
 
     private static String buildFullTableName(String catalog,
-                                         String schema,
-                                         String name) {
+                                             String schema,
+                                             String name) {
         if (schema.length() > 0 || catalog.length() > 0) {
             StringBuilder b = new StringBuilder();
             if (catalog.length() > 0)
@@ -623,7 +626,7 @@ final class JPAHelpers {
     }
 
     public static SecondaryTable getSecondaryTable(Class<?> entity,
-                                               String secondary) {
+                                                   String secondary) {
         return getSecondaryTableAnnotation(entity, secondary);
     }
 
@@ -723,7 +726,7 @@ final class JPAHelpers {
                 // should be the sole PK column
                 return entityIds.size() == 1
                         ? new IdentifierPath.Resolved(entityIds.get(0).getColumn(), field.getDeclaringClass(),
-                                field.getName(), null)
+                        field.getName(), null)
                         : // if this case is possible, we are covered
                         new IdentifierPath.MultiColumnIdentifierPath(field.getName(), c -> getAssociation(field, true),
                                 null);
@@ -754,7 +757,7 @@ final class JPAHelpers {
             String name = getFieldName(m);
             String decapitalized = decapitalize(name);
             Class<?> clazz = m.getDeclaringClass();
-            for (;;) {
+            for (; ; ) {
                 try {
                     return clazz.getDeclaredField(decapitalized);
                 } catch (NoSuchFieldException e) {
@@ -907,7 +910,7 @@ final class JPAHelpers {
                    name) -> clazz.getDeclaredMethod(name, (Class<?>[]) null)
                 : Class::getDeclaredField;
 
-        for (;;) {
+        for (; ; ) {
             try {
                 return memberAccessor.apply(type, mappedBy);
             } catch (Exception e) {

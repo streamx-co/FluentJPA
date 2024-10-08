@@ -6,7 +6,7 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
+//import lombok.SneakyThrows;
 import lombok.ToString;
 
 interface TupleResultTransformerImplHelpers {
@@ -33,7 +33,11 @@ interface TupleResultTransformerImplHelpers {
 
         public MethodSetter(Method getter) {
             this.get = getter;
-            this.set = setterFromGetter(getter);
+            try {
+                this.set = setterFromGetter(getter);
+            } catch (NoSuchMethodException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         @Override
@@ -53,8 +57,8 @@ interface TupleResultTransformerImplHelpers {
             return new MethodGetter(get);
         }
 
-        @SneakyThrows
-        private static Method setterFromGetter(Method getter) {
+//        @SneakyThrows
+        private static Method setterFromGetter(Method getter) throws NoSuchMethodException {
             Class<?> type = getter.getDeclaringClass();
             String setterName;
             String name = getter.getName();

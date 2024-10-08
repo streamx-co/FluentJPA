@@ -31,14 +31,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.persistence.Column;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToMany;
-import javax.persistence.Table;
+import jakarta.persistence.Column;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.Table;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -325,7 +325,7 @@ public class TestJPA implements CommonTest {
         private long productId;
 
         @ManyToMany()
-        @javax.persistence.JoinTable(name = "gemstone_product", joinColumns = {
+        @jakarta.persistence.JoinTable(name = "gemstone_product", joinColumns = {
                 @JoinColumn(name = "product_id") }, inverseJoinColumns = {
                 @JoinColumn(name = "gemstone_id") })
         private Set<Gemstone> gemstones = new HashSet<>(0);
@@ -344,7 +344,7 @@ public class TestJPA implements CommonTest {
         private long gemstoneId;
 
         @ManyToMany(fetch = FetchType.LAZY)
-        @javax.persistence.JoinTable(name = "gemstone_product", joinColumns = {
+        @jakarta.persistence.JoinTable(name = "gemstone_product", joinColumns = {
                 @JoinColumn(name = "gemstone_id") }, inverseJoinColumns = { @JoinColumn(name = "product_id") })
         private Set<Product> products = new HashSet<>(0);
 

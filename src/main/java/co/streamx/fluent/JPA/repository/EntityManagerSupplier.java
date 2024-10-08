@@ -1,6 +1,6 @@
 package co.streamx.fluent.JPA.repository;
 
-import javax.persistence.EntityManager;
+import jakarta.persistence.EntityManager;
 
 public interface EntityManagerSupplier {
     EntityManager getEntityManager();

@@ -30,8 +30,8 @@ import static co.streamx.fluent.SQL.TransactSQL.SQL.YEAR;
 import java.util.Collection;
 import java.util.List;
 
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

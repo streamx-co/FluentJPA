@@ -2,7 +2,7 @@ package co.streamx.fluent.JPA;
 
 import java.sql.Timestamp;
 
-import javax.persistence.Table;
+import jakarta.persistence.Table;
 
 import co.streamx.fluent.notation.Tuple;
 import lombok.Data;

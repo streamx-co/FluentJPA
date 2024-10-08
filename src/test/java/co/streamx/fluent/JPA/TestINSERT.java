@@ -17,9 +17,9 @@ import static co.streamx.fluent.SQL.ScalarFunctions.WHEN;
 import java.util.Arrays;
 import java.util.List;
 
-import javax.persistence.AttributeOverride;
-import javax.persistence.Column;
-import javax.persistence.Table;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Table;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
