@@ -98,7 +98,7 @@ This is an "entry-point" method to the FluentJPA. It accepts a Java lambda and t
 
 ## Setup
 
-There is no bootstrap, code generation step or anything else needed to use FluentJPA. Add [dependencies](https://github.com/streamx-co/FluentJPA/wiki/Setup) to your project enjoy the type-safe Object Oriented SQL in your JPA project without compromises! (Disclaimer: FluentJPA strives to be as unobtrusive as possible. We don't change or affect anything, so your existing code will continue to work as before. We don't bring **any** dependencies except our own code and [ASM](https://asm.ow2.io/), total ~500K).
+There is no bootstrap, code generation step or anything else needed to use FluentJPA. Add [dependencies](https://github.com/streamx-co/FluentJPA/wiki/Setup) to your project enjoy the type-safe Object Oriented SQL in your JPA project without compromises! (Disclaimer: FluentJPA strives to be as unobtrusive as possible. We don't change or affect anything, so your existing code will continue to work as before. We don't bring **any** dependencies except our own code and [ASM](https://asm.ow2.io/), total < 250K).
 
 * [Setup Instructions](https://github.com/streamx-co/FluentJPA/wiki/Setup)
 * [Documentation & Tutorials](https://github.com/streamx-co/FluentJPA/wiki)
