@@ -100,7 +100,7 @@
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<version>1.18.34</version>
+			<version>1.18.38</version>
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
@@ -170,6 +170,9 @@
 				<configuration>
 					<source>17</source>
 					<target>17</target>
+					<compilerArgs>
+						<arg>-proc:full</arg>
+					</compilerArgs>
 				</configuration>
 			</plugin>
 			<plugin>
@@ -277,7 +280,7 @@
   </reporting>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<spring.boot.version>3.3.4</spring.boot.version>
+		<spring.boot.version>3.4.0</spring.boot.version>
 		<flyway.version>9.21.0</flyway.version>
 		<ex-tree.version>2.8.4</ex-tree.version>
 		<jpa-notations.version>1.0.14</jpa-notations.version>
