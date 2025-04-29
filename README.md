@@ -1,12 +1,12 @@
 # Get Back in Control of Your SQL with JPA <div style="float:right">![Patent Pending](https://img.shields.io/badge/patent-pending-informational) [![License](https://img.shields.io/badge/license-LGPL_3.0-success)](LICENSE) ![Java Version](https://img.shields.io/badge/java-%3E%3D%208-success) [![Maven Central](https://img.shields.io/maven-central/v/co.streamx.fluent/fluent-jpa?label=maven%20central)](https://search.maven.org/search?q=g:%22co.streamx.fluent%22%20AND%20a:%22fluent-jpa%22)</div>
 
-FluentJPA is a Language Integrated Query (LINQ) technology for relational (SQL) databases and JPA. It allows you to use Java to write strongly typed queries by directly integrating into the language.
+FluentJPA is a Language Integrated Query (LINQ) technology for relational (SQL) databases and JPA. It allows you to write strongly typed queries directly within Java, leveraging the language's full power and the benefits of type safety.
 
-## How does FluentJPA integrate into Java?
+## How does FluentJPA seamlessly integrate into Java?
 
-At first glance, it seems that we need a hook in the Java compiler. But in fact, we have full access to the compiled bytecode, which has all the necessary "knowledge". This is how FluentJPA does its magic - it reads the bytecode and translates it to SQL.
+While one might initially think a compiler hook is necessary, FluentJPA operates by accessing the compiled bytecode. The bytecode conveniently retains all the necessary type information and structure. This is where FluentJPA performs its magic: it reads the bytecode representations of your query logic and intelligently translates them directly into efficient SQL.
 
-As a result, the integration is full, and FluentJPA supports all Java language constructs, including functions, variables, etc - anything the compiler can compile and also makes sense in the SQL context. See [Java Language Support](https://github.com/streamx-co/FluentJPA/wiki/Java-Language-Support) for details.
+As a result, the integration is robust and comprehensive. FluentJPA supports all relevant Java language constructs—including functions, variables, and more—anything the compiler handles that makes sense within the SQL context. This allows you to benefit from IDE features like refactoring and static analysis on your queries. See [Java Language Support](https://github.com/streamx-co/FluentJPA/wiki/Java-Language-Support) for details to experience the control and productivity of writing SQL queries the Java way.
 
 ## We already have JPA, JPA repositories and other technologies
 
