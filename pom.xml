@@ -168,8 +168,8 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
-					<source>17</source>
-					<target>17</target>
+					<source>25</source>
+					<target>25</target>
 					<compilerArgs>
 						<arg>-proc:full</arg>
 					</compilerArgs>
@@ -280,9 +280,9 @@
   </reporting>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<spring.boot.version>3.4.0</spring.boot.version>
+		<spring.boot.version>3.5.6</spring.boot.version>
 		<flyway.version>9.21.0</flyway.version>
-		<ex-tree.version>2.8.4</ex-tree.version>
+		<ex-tree.version>2.8.4-jre24</ex-tree.version>
 		<jpa-notations.version>1.0.14</jpa-notations.version>
 		<sql-grammar.version>1.0.17</sql-grammar.version>
 		<jwt.version>3.10.1</jwt.version>

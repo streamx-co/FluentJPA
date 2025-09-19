@@ -99,7 +99,7 @@ private static final String HIBERNATE5_RESULT_TRANSFORMER_INSTALLER = "co.stream
         }
 
         @SuppressWarnings("unchecked")
-        TypedQuery<X> xquery = query instanceof TypedQuery ? (TypedQuery<X>) query : new TypedQueryWrapper<>(query);
+        TypedQuery<X> xquery = query instanceof TypedQuery ? (TypedQuery<X>) query : TypedQueryWrapper.wrap(query);
         return bindParameters(xquery);
     }
 
