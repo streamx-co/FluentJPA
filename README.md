@@ -8,6 +8,12 @@ While one might initially think a compiler hook is necessary, FluentJPA operates
 
 As a result, the integration is robust and comprehensive. FluentJPA supports all relevant Java language constructs—including functions, variables, and more—anything the compiler handles that makes sense within the SQL context. This allows you to benefit from IDE features like refactoring and static analysis on your queries. See [Java Language Support](https://github.com/streamx-co/FluentJPA/wiki/Java-Language-Support) for details to experience the control and productivity of writing SQL queries the Java way.
 
+### Is the integration stable? Does it break with new Java versions?
+
+The integration is highly stable. As the most objective measure, we track the number of related incidents. Over the last five years, only three related incidents were identified. All were addressed swiftly without any known impact on any user's operations.
+
+The stability of this integration is primarily due to the nature of Java bytecode itself. Java bytecode is an extremely stable standard. Because it is designed to be generic across all platforms, most performance optimizations are handled by the JVM itself, in the lower layers. This means that as long as there are no changes to the bytecode standard, our library will continue to function as expected. The low number of reported incidents serves as the best indicator of this reliability.
+
 ## We already have JPA, JPA repositories and other technologies
 
 > FluentJPA seeks to complement JPA where the developer wants to gain control over SQL
@@ -98,7 +104,7 @@ This is an "entry-point" method to the FluentJPA. It accepts a Java lambda and t
 
 ## Setup
 
-There is no bootstrap, code generation step or anything else needed to use FluentJPA. Add [dependencies](https://github.com/streamx-co/FluentJPA/wiki/Setup) to your project enjoy the type-safe Object Oriented SQL in your JPA project without compromises! (Disclaimer: FluentJPA strives to be as unobtrusive as possible. We don't change or affect anything, so your existing code will continue to work as before. We don't bring **any** dependencies except our own code and [ASM](https://asm.ow2.io/), total < 250K).
+There is no bootstrap, code generation step or anything else needed to use FluentJPA. Add [dependencies](https://github.com/streamx-co/FluentJPA/wiki/Setup) to your project enjoy the type-safe Object Oriented SQL in your JPA project without compromises! (Disclaimer: FluentJPA strives to be as unobtrusive as possible. We don't change or affect anything, so your existing code will continue to work as before. We don't bring **any** dependencies except our own code, see Setup below).
 
 * [Setup Instructions](https://github.com/streamx-co/FluentJPA/wiki/Setup)
 * [Documentation & Tutorials](https://github.com/streamx-co/FluentJPA/wiki)
